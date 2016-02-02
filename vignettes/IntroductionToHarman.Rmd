@@ -1,0 +1,712 @@
+---
+title: "An Introduction to Harman"
+author: "Jason Ross and Yalchin Oytam"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to Harman}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+# Introduction
+
+The harman package is used to remove unwanted batch (technical) effects from datasets. It was designed for microarray and deep sequencing data, but it is applicable to any high-dimensional data where the experimental variable of interest is not completely confounded with the batch variable. Harman uses a PCA and constrained optimisation based technique. This vignette is a tutorial for using Harman in a number of common scenarios and also provides insight on how to interpret results.
+  
+For help with Harman, use the package help system. A good place to start is typing `?harman` in the console.
+Harman required three inputs:
+  1. `datamatrix`, a `matrix` of type `numeric` or `integer`, or a `data.frame` that can be coerced into such using `as.matrix()`,
+  2. `expt`, a vector or factor containing the experimental grouping variable,
+  3. `batch`, a vector or factor containing the batch grouping variable.
+
+The `matrix` is to be constructed with data values (typically microarray probes or sequencing counts) in rows and samples in columns, much like the `assayData` slot in the canonical Bioconductor `eSet` object, or any object which inherits from it. The data should have normalisation and any other global adjustment for noise reduction (such as background correction) applied prior to using Harman.
+
+The fourth parameter of interest in Harman is `limit`, which sets the confidence limit for batch effect removal. The default is `limit=0.95`. We can consider the confidence limit an inverse of the alpha level, so there is `1 - limit` chance (default of `0.05`, or 5%) that some of the variance from the experimental variable is being removed along with the batch variance. This user specified `limit` parameter allows one to tune the aggressiveness of the batch effect removal. The more samples in each batch, the more opportunity Harman has to model the batch distributions, which allows a more precise identification (and subsequent removal) of batch effects.
+
+*The Harman package is available from Bioconductor or Github.*
+```{r, echo=FALSE}
+library(knitr)
+```
+
+
+```{r}
+library(Harman)
+library(HarmanData)
+library(RColorBrewer)
+```
+
+
+## Working with a simple transciptome microarray dataset.
+
+First off, let's load an example dataset where the batches and experimental variable are balanced.
+```{r}
+data(OLF)
+```
+
+The Olfactory stem cell study is an experiment to gauge the response of human olfactory neurosphere-derived (hONS) cells established from adult donors to ZnO nanoparticles. A total of 28 Affymetrix HuGene 1.0 ST arrays were normalised together using RMA.  
+The data comprises six treatment groups plus a control group, each consisting of four replicates: 
+```{r}
+table(olf.info)
+```
+
+The `olf.info` data.frame has the `expt` and `batch` variables across `r ncol(olf.info)` columns, with each sample described in one row to give `r nrow(olf.info)` rows.
+```{r}
+olf.info[1:7,]
+```
+
+The data is a data.frame of normalised log2 expression values with dimensions: `r nrow(olf.data)` rows x `r ncol(olf.data)` columns. This data can be handed to Harman as is, or first coerced into a matrix.
+```{r}
+head(olf.data)
+```
+
+**Okay, so let's run Harman.**
+```{r}
+olf.harman <- harman(olf.data, expt=olf.info$Treatment, batch=olf.info$Batch,
+                     limit=0.95)
+```
+
+This creates a `harmanresults` S3 object which has a number of slots. These include the `centre` and `rotation` slots of a `prcomp` object which is returned after calling `prcomp(t(x))`, where `x` is the datamatrix supplied. These two slots are required for reconstructing the PCA scores later. The other slots are the `factors` supplied for the analysis (specified as `expt` and `batch`), the runtime `parameters` and some summary `stats` for Harman. Finally, there are the `original` and `corrected` PC scores.
+  
+```{r}
+str(olf.harman)
+```
+
+### Inspecting results
+
+Harman objects can be inspected with methods such as `pcaPlot` and `arrowPlot`, as well as the generic functions `plot` and `summary`.
+```{r, fig.height=4, fig.width=7}
+plot(olf.harman)
+```
+
+```{r, fig.height=5, fig.width=5}
+arrowPlot(olf.harman)
+```
+  
+Using `summary` or inspecting the `stats` slot we can see Harman corrected the first 7 PCs and left the rest uncorrected.
+```{r}
+summary(olf.harman)
+kable(olf.harman$stats)
+```
+  
+As the confidence (`limit`) was 0.95, Harman will look for batch effects until this limit is met. It does this by reducing the batch means in an iterative way using a binary search algorithm until the chance that biological variance is being removed (the factor given in `expt`) is too high. Consider the value specified in the stats column  `confidence` as the likelihood that separation of samples in this PC is due to batch alone and not due to the experimental variable. If this confidence value is less than `limit`, Harman will not make another iterative correction. For example, on PC8 the confidence is about `0.835` which is below the limit of `0.95`, so Harman did not alter data on this PC. Let's check this on a plot.
+```{r, fig.height=5, fig.width=5}
+arrowPlot(olf.harman, 1, 8)
+```
+  
+The horizontal arrows show us that, on PC1 the scores were shifted, but on PC8 they were not.
+
+If both dimensions were not shifted, the `arrowPlot` will default to printing `x` instead of arrows (*can't have `0` length arrows!*)
+```{r, fig.height=5, fig.width=5}
+arrowPlot(olf.harman, 8, 9)
+```
+  
+We can also easily colour the PCA plot by the experimental variable to compare:
+```{r, fig.height=4, fig.width=7}
+par(mfrow=c(1,2))
+pcaPlot(olf.harman, colBy='batch', pchBy='expt', main='Col by Batch')
+pcaPlot(olf.harman, colBy='expt', pchBy='batch', main='Col by Expt')
+```
+  
+### Correct the data
+
+So, if corrections have been made and we're happy with the value of `limit`, then we reconstruct corrected data from the Harman adjusted PC scores. To do this a `harmanresults` object is handed to the function `reconstructData()`. This function produces a matrix of the same dimensions as the input matrix filled with corrected data.
+```{r}
+olf.data.corrected <- reconstructData(olf.harman)
+```
+This new data can be over-written into something like an `ExpressionSet` object with a command like `exprs(eset) <- data.corrected`. An example of this is below.
+  
+To convince you that Harman is working as it should in reconstructing the data back from the PCA domain, let's test this principle on the original data.
+```{r}
+olf.data.remade <- reconstructData(olf.harman, this='original')
+all.equal(as.matrix(olf.data), olf.data.remade)
+```
+*So, the data is indeed the same (to within the machine epsilon limit for floating point error)!*
+  
+### How does the new data differ from the old data?
+
+Let's try graphically plotting the differences using `image()`. First, the rows (probesets) are ordered by the variation in the difference between the original and corrected data.
+```{r, fig.height=9, fig.width=5}
+olf.data.diff <- abs(as.matrix(olf.data) - olf.data.corrected)
+
+diff_rowvar <- apply(olf.data.diff, 1, var)
+by_rowvar <- order(diff_rowvar)
+
+par(mfrow=c(1,1))
+image(x=1:ncol(olf.data.diff),
+      y=1:nrow(olf.data.diff),
+      z=t(olf.data.diff[by_rowvar, ]),
+      xlab='Sample',
+      ylab='Probeset',
+      main='Harman probe adjustments (ordered by variance)',
+      cex.main=0.7,
+      col=brewer.pal(9, 'Reds'))
+```
+
+We can see that most Harman adjusted probes were from batch 3 (samples 15 to 21), while batch 1 is relatively unchanged. In batches 2 and 3, often the same probes were adjusted to a larger extent in batch 3. This suggests some probes on this array design are prone to a batch effect.
+
+## Another simple example
+
+The IMR90 Human lung fibroblast cell line data that was published in a paper by Johnson et al (doi: 10.1093/biostatistics/kxj037) comes with Harman as an example dataset.
+```{r}
+require(Harman)
+data(IMR90)
+```
+
+  The data is structured like so:
+```{r, echo=FALSE}
+kable(imr90.info)
+```
+
+It can be seen from the below table the experimental structure is completely balanced.
+```{r}
+table(expt=imr90.info$Treatment, batch=imr90.info$Batch)
+```
+
+### Evidence of batch effects
+While there isn't glaring batch effects in PC1 and PC2, they are more apparent when plotting PC1 and PC3.
+```{r, fig.height=4, fig.width=7}
+
+# define a quick PCA and plot function
+pca <- function(exprs, pc_x=1, pc_y=2, cols, ...) {
+  pca <- prcomp(t(exprs), retx=TRUE, center=TRUE)
+  if(is.factor(cols)) {
+    factor_names <- levels(cols)
+    num_levels <- length(factor_names)
+    palette <- rainbow(num_levels)
+    mycols <- palette[cols]  
+  } else {
+    mycols <- cols
+  }
+  plot(pca$x[, pc_x], pca$x[, pc_y],
+       xlab=paste('PC', pc_x, sep=''),
+       ylab=paste('PC', pc_y, sep=''),
+       col=mycols, ...)
+  if(is.factor(cols)) {
+    legend(x=min(pca$x[, pc_x]), y=max(pca$x[, pc_y]),
+           legend=factor_names, fill=palette, cex=0.5)
+  }
+}
+
+par(mfrow=c(1,2), mar=c(4, 4, 4, 2) + 0.1)
+imr90.pca <- prcomp(t(imr90.data), scale. = TRUE)
+prcompPlot(imr90.pca, pc_x=1, pc_y=2, colFactor=imr90.info$Batch,
+           pchFactor=imr90.info$Treatment, main='IMR90, PC1 v PC2')
+prcompPlot(imr90.pca, pc_x=1, pc_y=3, colFactor=imr90.info$Batch,
+           pchFactor=imr90.info$Treatment, main='IMR90, PC1 v PC3')
+```
+
+### Now to work with Harman.
+```{r}
+imr90.hm <- harman(as.matrix(imr90.data), expt=imr90.info$Treatment,
+                   batch=imr90.info$Batch)
+```
+  
+We can see the most batch correction was actually on the 3rd principal component and the data was also corrected on the 1st and 4th component.
+
+```{r, echo=FALSE}
+kable(imr90.hm$stats)
+```
+  
+Plotting PC1 v. PC2 and PC1 v. PC3...
+```{r, fig.height=4, fig.width=7}
+plot(imr90.hm, pc_x=1, pc_y=2)
+plot(imr90.hm, pc_x=1, pc_y=3)
+```
+
+While no batch effect was found on PC2, there are batch effects on PC1, 3 and 4. An `arrowPlot()` shows the extent of the correction:
+```{r, fig.height=5, fig.width=5}
+arrowPlot(imr90.hm, pc_x=1, pc_y=3)
+```
+  
+On PC1 the data has been shifted only a little, while on PC3 a large batch-effect signature seems to be present. The corrected data on the PC1 v. PC3 plot is still a little separated by batch. If we wish to aggressively stomp on the batch effect, (with increased risk of removing some experimental variance), we may specify something like `limit=0.9`.
+```{r, fig.height=4, fig.width=7}
+imr90.hm <- harman(as.matrix(imr90.data), expt=imr90.info$Treatment,
+                   batch=imr90.info$Batch, limit=0.9)
+plot(imr90.hm, pc_x=1, pc_y=3)
+```
+This time the samples across batches are less separated on the plot and there is also a batch effect found on PC2.
+```{r, echo=FALSE}
+kable(imr90.hm$stats)
+```
+
+Again, as before we reconstuct the data. Let's also use this data to do a comparison: a PCA plot of the original data and shiny new reconstructed data.
+```{r, fig.height=4, fig.width=7}
+imr90.data.corrected <- reconstructData(imr90.hm)
+par(mfrow=c(1,2))
+#pca_cols <- rainbow(3)[imr90.hm$factors$batch]
+pca(imr90.data, 1, 3, cols=imr90.hm$factors$batch, cex=1.5, pch=16,
+    main='PCA, Original')
+pca(imr90.data.corrected, 1, 3, cols=imr90.hm$factors$batch, cex=1.5, pch=16,
+    main='PCA, Corrected')
+```
+
+
+## Working with unbalanced and confounded data
+
+The dataset for this exercise is that discussed by Jeff Leek and others [here](http://www.nature.com/nrg/journal/v11/n10/pdf/nrg2825.pdf) and arises from this [paper](http://www.ncbi.nlm.nih.gov/pubmed/15173019). This was a bladder cancer study comparing Affymetrix HG-U133A microarray expression profiles across five groups: superficial transitional cell carcinoma (sTCC) with surrounding carcinoma *in situ* (CIS) lesions (sTCC+CIS) or without surrounding CIS lesions (sTCC-CIS), muscle invasive carcinomas (mTCC) with normal bladder mucosa from patients without a bladder cancer history (Normal) and biopsies from
+cystectomy specimens (Biopsy). The arrays were run on 5 different days (5 batches).
+  
+First, loading the data.
+```{r}
+library(bladderbatch, quietly=TRUE)
+library(Harman)
+# This loads an ExpressionSet object called bladderEset
+data(bladderdata)
+bladderEset
+```
+
+The phenotype data.
+```{r, echo=FALSE}
+kable(pData(bladderEset))
+```
+
+A table of `batch` by `outcome`.
+```{r}
+table(batch=pData(bladderEset)$batch, expt=pData(bladderEset)$outcome)
+```
+
+### Batch structure
+
+The experimental design is very poor in controlling for a batch effect. Ideally, the five factors should be distributed across the five run dates (batches). Instead, four out of the five experimental factors are distributed across two batches. The `sTCC+CIS` samples are all within batch `5`. In this instance, batch is completely confounded with the experimental variable, so any variation in the data will be a sum of the biological variance and technical variance. Any inference about the difference of `sTCC+CIS` to other groups needs to be made very guardedly. It is also worth noting the spread of the `mTCC` samples across batches is suboptimal. While there are 11 samples in batch 1, there is only a single sample in batch 2. Finally, batches 3 and 4 have only one sample type.
+  
+Let's explore the multivariate grouping of the data by generating some PCA plots, first with colouring by batch and then by experimental variable.
+```{r, fig.height=4, fig.width=7}
+par(mfrow=c(1,2))
+pca(exprs(bladderEset), cols=as.factor(pData(bladderEset)$batch),
+    pch=as.integer(pData(bladderEset)$outcome), main='Col by Batch')
+pca(exprs(bladderEset), cols=pData(bladderEset)$outcome,
+    pch=pData(bladderEset)$batch, main='Col by Expt')
+```
+
+The batch structures are highly unbalanced and so a batch effect is not immediately obvious to casual observation. However, a closer examination of samples that are represented well across two batches (Biopsy and Normal), shows a batch effect is certainly present. Certainly, with an older microarray technology like the Affymetrix HG-U133A, batch effects will be present.
+
+### Harman correction
+
+Even though the batch structures are highly unbalanced, this dataset is quite large - so, we expect Harman to be well powered to find batch effects. Let's take a look.
+```{r, cache=TRUE}
+expt <- pData(bladderEset)$outcome
+batch <- pData(bladderEset)$batch
+bladder_harman <- harman(exprs(bladderEset), expt=expt, batch=batch)
+sum(bladder_harman$stats$correction < 1)
+````
+
+Harman found `r sum(bladder_harman$stats$correction < 1)` of the
+`r length(bladder_harman$stats$correction)` PCs had a batch effect.
+```{r}
+summary(bladder_harman)
+```
+
+Now plotting the original and corrected data.
+```{r, fig.height=4, fig.width=7}
+par(mfrow=c(1,1))
+plot(bladder_harman)
+```
+
+The `summary()` shows PC3 to be highly batch-effected.
+```{r, fig.height=4, fig.width=7}
+plot(bladder_harman, 1, 3)
+```
+
+Now the PC scores changes displayed on an `arrowPlot`.
+```{r, fig.height=5, fig.width=5}
+arrowPlot(bladder_harman, 1, 3)
+```
+
+### Create a new ExpressionSet object
+
+First create a new object and then fill the `exprs` slot of the `r class(bladderEset)[1]` object with Harman corrected data. Alternatively, the existing object can have the `exprs` slot overwritten.
+```{r}
+CorrectedBladderEset <- bladderEset
+exprs(CorrectedBladderEset) <- reconstructData(bladder_harman)
+comment(bladderEset) <- 'Original'
+comment(CorrectedBladderEset) <- 'Corrected'
+```
+
+### Limma analysis
+
+Let's check the effects of Harman with a `limma` analysis. First fitting the original data:
+```{r}
+library(limma, quietly=TRUE)
+design <- model.matrix(~0 + expt)
+colnames(design) <- c("Biopsy", "mTCC", "Normal", "sTCC", "sTCCwCIS")
+contrast_matrix <- makeContrasts(sTCCwCIS - sTCC, sTCCwCIS - Normal,
+                                 Biopsy - Normal,
+                                 levels=design)
+
+fit <- lmFit(exprs(bladderEset), design)
+fit2 <- contrasts.fit(fit, contrast_matrix)
+fit2 <- eBayes(fit2)
+summary(classifyTestsT(fit2))
+```
+
+Now a linear model on the Harman corrected data:
+```{r}
+fit_hm <- lmFit(exprs(CorrectedBladderEset), design)
+fit2_hm <- contrasts.fit(fit_hm, contrast_matrix)
+fit2_hm <- eBayes(fit2_hm)
+summary(classifyTestsT(fit2_hm))
+```
+
+We can see the dramatic effect Harman has had in reducing the number of significant microarray probes. The huge reduction in the `Biopsy - Normal` contrast makes biological sense, about half of the biopsies were from cystectomies were histologically normal. The Harman corrected data on the `sTCCwCIS - sTCC` contrast suggests that surrounding *in situ* lesions (CIS) does not overly impact the transcriptome of superficial transitional cell carcinoma (sTCC).
+
+## Methylation data
+
+As an example, let's consider the Illumina Infinium HumanMethylation450 BeadChip data (450k array). First up, an important tip, **put M-values into Harman, not Beta-values.** Harman is designed for continuous ordinal data, not data which is constrained, such as Beta-values; which by definition are between 0 and 1. Input M-values into Harman and if Beta-values are needed downstream, convert the corrected M-values back into Beta-values using something like the `m2beta()` function in the `lumi` package, or the `ilogit2()` function in `minfi`.
+  
+M-values also have the property of having far more centrality than Beta-values. PCA is a parametric technique and so it works best with an underlying Gaussian distribution to the data. While it has been historically shown that PCA works rather well in non-parametric settings, Harman might be expected to be more sensitive if the data is centred (M-values), rather than bimodal at the extremes (Beta-values).
+  
+Beta values of exactly `0` or `1` will translate to minus infinity and infinity, respectively, in M-value space. An M-value is the `logit2()` of a Beta value and  Beta-values are `ilogit2` of the M-values. These infinite values will make the internal singular value decomposition (SVD) step of Harman throw an exception. Further, infinite M-values are not commutative. If an M-value of `Inf` or `-Inf` is transformed back into a Beta-value it will have the value `NaN` or `0`, respectively. For these reasons we do not recommend a normalisation step which creates Beta-values of exactly `0` or `1`.
+
+```{r}
+library(minfi, quietly = TRUE)
+logit2
+ilogit2
+ilogit2(Inf)
+ilogit2(-Inf)
+```
+A normalisation technique such as `preprocessIllumina()` in the minfi package will give Beta-values of exactly `0` or `1`, while a technique such as `SWAN` does not. Instead it incorporates a small offset, alpha, as suggested by [Pan Du et al](http://www.biomedcentral.com/content/pdf/1471-2105-11-587.pdf). While we do not recommend use of a normalisation technique that generate exact `0` or `1` Beta-values, sometimes, we realise, only this normalised data is available. For instance, when the data has been downloaded from a public resource, pre-normalised with no raw red and green channel data. For this case, we have supplied the `shiftBetas()` helper function in Harman to resolve this problem. We shift beta values of *exactly* `0` or `1` by a very small amount (typically `1e-4`) before transformation into M-values. As an example:
+
+```{r}
+betas <- seq(0, 1, by=0.05)
+betas
+newBetas <- shiftBetas(betas, shiftBy=1e-4)
+newBetas
+range(betas)
+range(newBetas)
+logit2(betas)
+logit2(newBetas)
+```
+
+### Loading 450K data
+
+So, let's get underway and analyse the toy dataset supplied with minfi.
+```{r}
+baseDir <- system.file("extdata", package="minfiData")
+targets <- read.450k.sheet(baseDir)
+```
+
+Read in the files, normalise using `SWAN()` and `preprocessIllumina()` and filter out poorly called CpG sites.
+```{r, cache=TRUE}
+library(missMethyl, quietly = TRUE)
+rgSet <- read.450k.exp(targets=targets)
+
+mRaw <- preprocessRaw(rgSet)
+mSetSw <- SWAN(mRaw)
+
+mSet <- preprocessIllumina(rgSet, bg.correct=TRUE, normalize="controls",
+                           reference=2)
+detP <- detectionP(rgSet)
+keep <- rowSums(detP < 0.01) == ncol(rgSet)
+mSetIl <- mSet[keep,]
+mSetSw <- mSetSw[keep,]
+```
+
+This dataset has quite a few phenotype variables of interest. The samples are paired cancer-normal samples from three people, 1 male and 2 females.
+```{r}
+kable(pData(mSetSw)[,c('Sample_Group', 'person', 'sex', 'status', 'Array',
+                       'Slide')])
+```
+
+Doing some exploratory data analysis using MDS (considering it is methylation data), we can see that `status` is separated on PC1 and `sex` on PC2. This makes biological sense as we know cancer and gender both have large effects on DNA methylation. In cancer samples, there is typically global hypomethylation and focal hypermethylation at some CpG islands. While in the case of gender, female and male samples have very different X chromosome methylation due to imprinting, as well as some autosomal CpG site differences.
+  
+If the plot is recoloured by `Slide`, there is some suggestion a batch effect is intermingled with these two experimental variables. The tricky question is how to use Harman to remove the influence of `Slide` on the data, without also removing variance due to the experimental variables of interest?
+```{r, fig.height=5, fig.width=5}
+par(mfrow=c(1, 1))
+cancer_by_gender_factor <- as.factor(paste(pData(mSetSw)$sex,
+                                           pData(mSetSw)$status)
+                                     )
+
+mdsPlot(mSetSw, sampGroups=cancer_by_gender_factor, pch=16)
+mdsPlot(mSetSw, sampGroups=as.factor(pData(mSet)$Slide), pch=16)
+```
+The experiment is very small, with only `r nrow(pData(mSet))` (paired) samples. The MDS plots suggests there are two main phenotypes of influence, `status` and `sex`. The  batch variable in this case is `Slide`. The `sex` phenotype variable, which is highly influencing the data, is spread unevenly across the two slides (batches).
+
+```{r}
+table(gender=pData(mSetSw)$sex, slide=pData(mSetSw)$Slide)
+```
+
+From the table, we can see that only slide `5723646052` has samples of male origin. If we specify a simple cancer-based model with `expt=pData(mSetSw)$status` and `batch=pData(mSetSw)$Slide`, Harman will attribute the male-specific methylation signature of the two paired male samples on slide `5723646052` as batch effect and will try and eliminate it.
+  
+There are two strategies here:
+  1. Form a compound factor by joining the `status` and `sex` factors together.
+  2. Generate two Harman corrections, one for `status` and one for `sex`.
+
+As this experiment is so small, the first strategy won't be very effective. Only the factor level `F normal` is shared by both batches and for only one replicate. It's very hard for Harman to get an idea of the batch distributions.
+```{r}
+cancer_by_gender_factor <- as.factor(paste(pData(mSetSw)$sex,
+                                           pData(mSetSw)$status)
+                                     )
+table(expt=cancer_by_gender_factor, batch=pData(mSetSw)$Slide)
+```
+
+In the second strategy, both levels of `expt` are shared across both levels of `batch`. This is a far more ideal way to find batch effects. Of course though, *there is confounding between `sex` and `Slide`!* So, in these cases, do not consider a batch confounded factor in downstream differential analysis.
+```{r}
+table(expt=pData(mSetSw)$status, batch=pData(mSetSw)$Slide)
+```
+
+### Appropriate normalisation
+
+If the Beta-values are shifted away from `0` or `1` by a very small amount, (say `1e-7`), they will generate extreme M-values. Instead a moderate correction (such as `1e-4`) seems the preferred option.
+```{r, fig.height=4, fig.width=7}
+par(mfrow=c(1,2))
+library(lumi, quietly = TRUE)
+shifted_betas <- shiftBetas(betas=getBeta(mSetIl), shiftBy=1e-7)
+shifted_ms <- beta2m(shifted_betas)  # same as logit2() from package minfi
+plot(density(shifted_ms, 0.05), main="Shifted M-values, shiftBy = 1e-7",
+     cex.main=0.7)
+
+shifted_betas <- shiftBetas(betas=getBeta(mSetIl), shiftBy=1e-4)
+shifted_ms <- beta2m(shifted_betas)  # same as logit2() from package minfi
+plot(density(shifted_ms, 0.05), main="Shifted M-values, shiftBy = 1e-4",
+     cex.main=0.7)
+```
+
+It can be seen that M-values have far more central-tendency (more Gaussian-like) than Beta-values.
+```{r, fig.height=4, fig.width=7}
+par(mfrow=c(1,2))
+plot(density(shifted_betas, 0.1), main="Beta-values, shiftBy = 1e-4",
+     cex.main=0.7)
+plot(density(shifted_ms, 0.1), main="M-values, shiftBy = 1e-4",
+     cex.main=0.7)
+```
+
+A comparison of M-values produced by the GenomeStudio-like `preprocessIllumina()` function and by `SWAN()`.
+```{r, fig.height=4, fig.width=7}
+par(mfrow=c(1,2))
+plot(density(shifted_ms, 0.1),
+     main="GenomeStudio-like M-values, shiftBy = 1e-4", cex.main=0.7)
+plot(density(getM(mSetSw), 0.1), main="SWAN M-values", cex.main=0.7)
+```
+
+**From here on, we will work with `SWAN` normalised M-values.**
+
+### Harman correction of M-values
+
+For this example, `status` is declared as the experimental variable.  When comparing conditions with very large DNA methylation differences, such as cancer and non-neoplastic samples, the batch effect will not be so easy to observe amongst all that biological variation. This scenario changes with a more subtle phenotype of interest. More arrays in each batch will allow Harman to more easily find batch effects. Considering this experiment is so small, an aggressive setting (`limit=0.65`) is needed to find a batch effect across a number of PCs (PCs 2, 5 and 1 in particular). A plot shows the correction made was relatively minor.
+
+```{r, fig.height=4, fig.width=7}
+methHarman <- harman(getM(mSetSw), expt=pData(mSetSw)$status,
+                     batch=pData(mSetSw)$Slide, limit=0.65)
+summary(methHarman)
+plot(methHarman, 2, 5)
+```
+
+It is difficult to tease out the batch effect with such a small experimental group. Rather than further reduce the `limit`, let's just convert the data back.
+```{r}
+ms_hm <- reconstructData(methHarman)
+betas_hm <- m2beta(ms_hm)
+```
+
+In downstream differential methylation analysis using `Limma` or otherwise, care must be taken to interpret the results. As Harman was run with the `expt` variable set to `status`, any other variation unrelated to `status` which is unbalanced across the two slides is considered as batch noise. For example, we have already shown that `sex` is a highly influential factor and it is unbalanced across the slides; only person of `id3` is male and both the normal and cancer samples are on slide `5723646052`. Therefore, we expect Harman to attribute this gender effect to a slide effect.
+
+In the specification of a linear model of `model.matrix(~id + group)`, we should then expect to find no differential methylation in person `id3`, the male. Let's try this:
+
+```{r}
+library(limma, quietly=TRUE)
+
+group <- factor(pData(mSetSw)$status, levels=c("normal", "cancer"))
+id <- factor(pData(mSetSw)$person)
+design <- model.matrix(~id + group)
+design
+```
+
+Now time to fit this design to both the original M-values and the Harman corrected M-values.
+```{r}
+fit_hm <- lmFit(ms_hm, design)
+fit_hm <- eBayes(fit_hm)
+
+fit <- lmFit(getM(mSetSw), design)
+fit <- eBayes(fit)
+```
+
+Our intuition is correct. Harman has indeed squashed the variation in person `id3`, there are now no differentially methylated probes.
+```{r}
+summary_fit_hm <- summary(decideTests(fit_hm))
+summary_fit <- summary(decideTests(fit))
+summary_fit_hm
+summary_fit
+```
+
+We also note, our ability to detect cancer-related differential methylation has been enhanced. There are now `r summary_fit_hm[1, 4] - summary_fit[1, 4]` more hypermethylated CpG probes and `r summary_fit_hm[3, 4] - summary_fit[3, 4]` more hypomethylated CpG probes.
+
+
+## Mass Spectrophotometry Data
+
+
+### Loading the data
+
+```{r}
+# Call dependencies
+library(msmsEDA)
+library(Harman)
+
+data(msms.dataset)
+msms.dataset
+```
+
+### Preprocessing
+
+The data matrix in an `MSnSet` object may have all zero rows (if it's a subset of a larger object) and some samples may have NA values, which correspond to proteins not identified in that particular sample. Principle components analysis cannot be undertaken on matrices with such features. So first we can use the wrapper function `pp.msms.data`, which removes all zero rows and replaces `NA` with `0`.
+
+```{r}
+# Preprocess to remove rows which are all 0 and replace NA values with 0.
+msms_pp <- pp.msms.data(msms.dataset)
+```
+
+### Batch structure
+
+```{r}
+kable(pData(msms_pp))
+```
+
+
+```{r}
+# Create experimental and batch variables
+expt <- pData(msms_pp)$treat
+batch <- pData(msms_pp)$batch
+table(expt, batch)
+```
+
+### Using Harman
+
+```{r}
+# Log2 transform data, add 1 to avoid infinite values
+log_ms_exprs <- log(exprs(msms_pp) + 1, 2)
+
+# Correct data with Harman
+hm <- harman(log_ms_exprs, expt=expt, batch=batch)
+summary(hm)
+```
+
+The Harman result is interesting. This MS data seems to have the batch effect contained within the first PC only. A marked difference compared to transcriptome microarray data and the like.
+
+A plot rather convincingly shows that Harman was able to remove the batch effect.
+```{r, fig.height=4, fig.width=7}
+plot(hm)
+```
+
+### Reconstructing the data
+
+Us usual we now reconstruct corrected data, but we add an extra transformation step on the end. As the data was Log2 transformed we convert it back to the original format (and subtract 1 as this was added before during the transformation into Log2 space). The corrected and transformed back data is placed into a new 'MSnSet' instance.
+```{r}
+# Reconstruct data and convert from Log2, removing 1 as we added it before.
+log_ms_exprs_hm <- reconstructData(hm)
+ms_exprs_hm <- 2^log_ms_exprs_hm - 1
+
+# Place corrected data into a new 'MSnSet' instance
+msms_pp_hm <- msms_pp
+exprs(msms_pp_hm) <- ms_exprs_hm
+rm(ms_exprs_hm, log_ms_exprs_hm)
+```
+
+## Working with very small datasets
+
+This example is an illustration of how Harman will have reduced power in teasing apart biological and technical variance when presented with a very small dataset (2 replicates and 2 conditions).
+
+To illustrate, we use the toy dataset in `library(affydata)`. The `Dilution` data within relates to two sources of cRNA, A (human liver tissue) and B (Central Nervous System cell line), which have been hybridized to human array (HGU95A) in a range of proportions and dilutions.
+
+This toy example is taken from arrays hybridized to source A at 10.0 and 20 μg. There are two replicate arrays for each generated cRNA, with each array replicate processed in a different scanner. [*For more information see Gautier et al., affy - Analysis of Affymetrix GeneChip data at the probe level*](http://bioinformatics.oxfordjournals.org/content/20/3/307.full.pdf).
+```{r, warning=FALSE}
+library(affydata, quietly = TRUE)
+data(Dilution)
+Dilution.log <- Dilution
+intensity(Dilution.log) <- log(intensity(Dilution))
+cols <- brewer.pal(nrow(pData(Dilution)), 'Paired')
+```
+  
+This dataset contains technical replicates of liver RNA run on two different scanners. Technical replicates are denoted as A and B samples. There are two technical replicates across two array scanners. The 10 and 20 The second 2 are also replicates. The second arrays are hybridized to twice as much RNA so the intensities should be in general bigger.
+
+```{r, echo=FALSE}
+kable(pData(Dilution))
+```
+
+```{r, fig.height=4, fig.width=4}
+boxplot(Dilution, col=cols)
+```
+  
+Notice that the scanner effect is stronger than the RNA concentration effect. This certainly hints at a batch effect.
+
+Let’s normalize the data by two methods (Loess and Quantile) and see if it removes this technical noise.
+```{r, fig.height=7, fig.width=7}
+Dilution.loess <-normalize(Dilution.log, method="loess")
+Dilution.qnt <-normalize(Dilution.log, method="quantiles")
+par(mfrow=c(2,2), mar=c(4, 4, 4, 2) + 0.1)
+boxplot(Dilution.loess, col=cols, main='Loess')
+boxplot(Dilution.qnt, col=cols, main='Quantile')
+pca(exprs(Dilution.loess), cols=cols, cex=1.5, pch=16, main='PCA Loess')
+pca(exprs(Dilution.qnt), cols=cols, cex=1.5, pch=16, main='PCA Quantile')
+```
+  
+The boxplots give the impression the batch effect has been removed. However, principal component analysis (PCA) shows the batch effect to still be the largest source of variance in the data. PC1 is dominated by batch effect (seperation of bold and pastel colours), while on PC2 the effect of RNA quantity is observed, so green (10 micrograms) compared with blue (20 micrograms).
+
+### Running Harman
+
+Let’s fire up harman and try to remove this batch effect.
+
+```{r}
+library(Harman)
+loess.hm <- harman(exprs(Dilution.loess),
+                   expt=pData(Dilution.loess)$liver,
+                   batch=pData(Dilution.loess)$scanner)
+qnt.hm <- harman(exprs(Dilution.qnt),
+                 expt=pData(Dilution.qnt)$liver,
+                 batch=pData(Dilution.qnt)$scanner)
+```
+
+If we inspect the stats on the Harman runs,
+
+Loess-normalised data
+```{r, echo=FALSE, fig.align='left'}
+kable(loess.hm$stats)
+```
+
+Quantile-normalised data
+```{r, echo=FALSE, fig.align='left'}
+kable(qnt.hm$stats)
+```
+
+**The correction statistic is 1.0 for all dimensions, so Harman didn’t find any batch effect!**
+
+### More aggressive settings
+
+While our intuition tells us there is a batch effect, with the default settings (limit=0.95), harman fails to find one. *This is due to the fact there are only two replicates in each batch!* Let’s step up the limit now, to a confidence interval of 0.75. So, we are 75% sure only technical (batch) variation and not biological variation is being removed.
+
+```{r}
+loess.hm <- harman(exprs(Dilution.loess),
+                   expt=pData(Dilution.loess)$liver,
+                   batch=pData(Dilution.loess)$scanner,
+                   limit=0.75)
+qnt.hm <- harman(exprs(Dilution.qnt),
+                 expt=pData(Dilution.qnt)$liver,
+                 batch=pData(Dilution.qnt)$scanner,
+                 limit=0.75)
+```
+This time a batch effect is found on PC1.
+
+Loess-normalised data
+```{r, echo=FALSE}
+kable(loess.hm$stats)
+```
+
+Quantile-normalised data
+```{r, echo=FALSE}
+kable(qnt.hm$stats)
+```
+
+### Harman plots
+
+So what corrections did Harman make with `limit=0.75`? Let’s take a look…
+```{r, fig.height=3, fig.width=7}
+par(mfrow=c(2,2), mar=c(4, 4, 4, 2) + 0.1)
+plot(loess.hm, 1, 2, pch=17, col=cols)
+plot(qnt.hm, 1, 2, pch=17, col=cols)
+```
+
+### Reconstruct the corrected data
+```{r}
+Dilution.loess.hm <- Dilution.loess
+Dilution.qnt.hm <- Dilution.qnt
+exprs(Dilution.loess.hm) <- reconstructData(loess.hm)
+exprs(Dilution.qnt.hm) <- reconstructData(qnt.hm)
+```
+

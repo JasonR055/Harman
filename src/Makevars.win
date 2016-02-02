@@ -1,0 +1,45 @@
+# Makevars.win 
+# N.B. The order of inclusion of these varaibles is: <this file> -> <site Makevars==%R_HOME%\etc\x64\Makevars> -> <personal Makevars.win>
+
+# To Start R studio on Windows with support for complilation of Rcpp based source code
+# Ensure your path is correct: Specify RTools path before the mingw compiler and ensure the 'make' program is present in RTools (it is built especially for Windows)
+# e.g: 
+# set PATH=%R_HOME%\bin\x64;F:\Rtools2015\bin;F:\mingw64\x64-4.8.1-posix-seh-rev3\mingw64\bin
+
+# To set up help files:
+# roxygen2::roxygenize(package.dir = "H:\\PATH\\TO\\HARMAN" )
+# (You may have to remove the /code tags and reorganise the title to something sensible)
+
+# To compile the package on a command line: 
+# R CMD INSTALL --build ./Harman Harman --preclean
+
+## Use the R_HOME indirection to support installations of multiple R version
+# $(shell test ${R_ARCH_BIN} = "x64" )
+
+# OpenMP variables are looked after by variables: $(SHLIB_OPENMP_CFLAGS)  
+# INTELOMP=-openmp  -openmp-report2  -vec-report1
+# GNUOMP=-fopenmp
+# GPUOMP_LIB=-lgomp -lpthread  
+
+# define this here if we want debug symbols in the dll:
+# DEBUG=T
+# -D_USE_CPP11  -D_USE_RCPP=1
+# --export-all-symbols
+# -D_PRINT=1   -D_PRINT=2
+
+
+PKG_CPPFLAGS =  -D_ARRAYALIGNEMT=4  -D_USE_RCPP=1
+PKG_CXXFLAGS =  $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "Rcpp:::CxxFlags()") -std=c++0x $(SHLIB_OPENMP_CFLAGS)  
+PKG_LIBS =  $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "Rcpp:::LdFlags()") $(SHLIB_OPENMP_CFLAGS)
+
+# To override other (non-package) variables, then set them in a file called HOME/.R/Makevars.win 
+# e.g. CXX1XSTD=-std=c++11 
+
+## Some variables that may be used include:
+##  * `DEBUG=T' to compile with debugging information for `gdb'.
+##  * `PKG_CFLAGS=' to specify options to the C compiler.
+##  * `PKG_CPPFLAGS=' to specify options to the preprocessor.
+##  * `PKG_CXXFLAGS=' to specify options to the C++ compiler.
+##  * `PKG_FFLAGS=' to specify options to the FORTRAN 77 compiler.
+##  * `PKG_FCFLAGS=' to specify options to the Fortran 95 compiler (if specified).
+##  * `PKG_LIBS=' to specify options to the linking step making the DLL.
