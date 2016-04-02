@@ -3,8 +3,15 @@
 #' @param object An object of class \code{harmanresults}.
 #' @param ... further parameters.
 #' @return    Returns an object of class \code{summary.harmanresults}.
+#' @seealso  \code{\link{harmanresults}}
+#' @examples
+#' library(HarmanData)
+#' data(OLF)
+#' expt <- olf.info$Treatment
+#' batch <- olf.info$Batch
+#' olf.harman <- harman(olf.data, expt, batch)
+#' summary(olf.harman)
 #' @export
-#' @seealso  \code{\link{harmanresults}} 
 summary.harmanresults <- function(object, ...) {
   # 1) % of the variance removed.
   # 2) Sequence of corrections from the 1st to last PC

@@ -679,7 +679,7 @@ public:
     size_t add_extra = 0 ;
     size_t * ptr_scan = NULL ; 
     size_t first_true = 0; 
-    size_t st_last ;
+    //size_t st_last ;
     
     for (size_t level = 0 ; level < this->_K ; level++ )
     {
@@ -699,7 +699,7 @@ public:
       
       first_true = 1;
 
-			st_last = 0 ;
+			//st_last = 0 ;
        while (( input >= ptr_scan[first_true] ) && (first_true < (N_step-K_step+1)) )
       {
         first_true++ ;

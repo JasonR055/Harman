@@ -2,14 +2,15 @@ Package: Harman
 Type: Package
 Title: The removal of batch effects from datasets using a PCA and constrained
     optimisation based technique
-Version: 0.99.0
-Date: 2016-02-01
+Version: 0.99.7
+Date: 2016-03-31
 Authors@R: c(person("Josh", "Bowden", role = "aut",
-		     email = "josh.bowden@csiro.au"),
-	      person("Jason", "Ross", role = c("aut", "cre"),
-		     email = "jason.ross@csiro.au"),
-	      person("Yalchin", "Oytam", role = "aut",
-		    email = "yalchin.oytam@csiro.au"))
+  email = "josh.bowden@csiro.au"),
+  person("Jason", "Ross", role = c("aut", "cre"),
+  email = "jason.ross@csiro.au"),
+  person("Yalchin", "Oytam", role = "aut",
+  email = "yalchin.oytam@csiro.au")
+  )
 Description: Harman is a PCA and constrained optimisation based technique that
     maximises the removal of batch effects from datasets, with the constraint
     that the probability of overcorrection (i.e. removing genuine biological
@@ -17,11 +18,21 @@ Description: Harman is a PCA and constrained optimisation based technique that
     end-user.
 NeedsCompilation: yes
 Suggests:
-    RUnit,
+    HarmanData,
     BiocGenerics,
+    BiocStyle,
     knitr,
     rmarkdown,
-    HarmanData
+    RUnit,
+    missMethyl,
+    RColorBrewer,
+    bladderbatch,
+    limma,
+    minfi,
+    lumi,
+    msmsEDA,
+    affydata,
+    minfiData
 Depends:
     R (>= 3.2)
 Imports:

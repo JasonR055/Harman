@@ -495,6 +495,10 @@ std::vector<T> * CSelectRandom<T>::SelectWITHOUTREPLACEMENTReturnRowSumFast(std:
 
 		if (selectK_IN > 0) 
 		{
+		  
+#if (_PRINT==1)
+		  _PRINTSTD << "CSelectRandom() obout to compute ReturnVectOf32bitIntegersInRange vector, size =  " << selectK_IN << std::endl  ;
+#endif
 			
 			// Copy input vector to muliplte std::list 
 			//std::vector<std::list<T> > vector_of_y_as_list(num_repeatsIN) ;
@@ -517,7 +521,9 @@ std::vector<T> * CSelectRandom<T>::SelectWITHOUTREPLACEMENTReturnRowSumFast(std:
 				t_arraysOfOffsets.push_back(t_vec_randsinRange) ;
 				nidivids-- ;
 			}
-			
+#if (_PRINT==1)
+			_PRINTSTD << "CSelectRandom() obtained ReturnVectOf32bitIntegersInRange vector " << std::endl  ;
+#endif
 			// This is the output array 
 			ret_arrayOfSelections= (std::vector<T> *) new std::vector<T>(num_repeatsIN) ;
 			if (ret_arrayOfSelections == NULL) {
@@ -882,16 +888,16 @@ std::vector<unsigned int> * CSelectRandom<T>::ReturnVectOf32bitIntegersInRange_C
 
 
 		std::vector<unsigned int> * v_randomDiscreteRangeData = NULL ;
-		size_t fullRange  ;
-		size_t cutoff ;
+		long long int fullRange  ;
+		long long int cutoff ;
 		fullRange = endRangeIN - startRangeIN ;
 
 		if (fullRange > 0)
 		{
 
-				size_t maxBitsNeeded ;
-				size_t randSizeBits ;
-				size_t numRandsNeeded ;
+		  long long int maxBitsNeeded ;
+		  long long int randSizeBits ;
+		  long long int numRandsNeeded ;
 #if (_USE_RCPP==1)
 			randSizeBits = this->GetNumbitsRequired(4294967295) ;  // we assume that the R docs here https://stat.ethz.ch/R-manual/R-devel/library/base/html/Random.html are correct
 #else
@@ -902,10 +908,10 @@ std::vector<unsigned int> * CSelectRandom<T>::ReturnVectOf32bitIntegersInRange_C
 				numRandsNeeded = this->GetNumRandomBitsRequired(maxBitsNeeded, randSizeBits) ;
 
 				unsigned int maxForNumbitsGiven ;
-				size_t maxForNumbitsGiven_ll ;
+				long long int maxForNumbitsGiven_ll ;
 				maxForNumbitsGiven_ll = 0 ;
 
-				maxForNumbitsGiven_ll = ((size_t)1 <<   (unsigned int) (numRandsNeeded * randSizeBits ))  ;
+				maxForNumbitsGiven_ll = ((long long int)1 <<   (unsigned int) (numRandsNeeded * randSizeBits ))  ;
 				maxForNumbitsGiven_ll = maxForNumbitsGiven_ll - 1 ;
 				maxForNumbitsGiven    = maxForNumbitsGiven_ll ;
 
@@ -916,14 +922,14 @@ std::vector<unsigned int> * CSelectRandom<T>::ReturnVectOf32bitIntegersInRange_C
 
 #if (_USE_RCPP==1)
 #if (_PRINT==2)
-				Rcpp::Rcout << "1:" << numRandsNeeded  << ", maxForNumbitsGiven:" << maxForNumbitsGiven << ", cutoff:"<< cutoff << ", fullRange:" << fullRange << ", randSizeBits:" << randSizeBits << std::endl ;
+				Rcpp::Rcout << "1:" << numRandsNeeded << "  maxBitsNeeded:" << maxBitsNeeded << ", maxForNumbitsGiven:" << maxForNumbitsGiven << ", cutoff:"<< cutoff << ", fullRange:" << fullRange << ", randSizeBits:" << randSizeBits << std::endl ;
 #endif
 #endif
 				unsigned int randData1  ;
 			//	size_t test_lli ; 
-				size_t reject ;
+			long long int reject ;
 				//size_t reject ;
-				size_t currval ;
+				long long int currval ;
 				reject = 0 ;
 				currval = 0 ;
 				//	for (size_t t1 = 0 ; t1 < v_random64bitIN->size() ; t1++)

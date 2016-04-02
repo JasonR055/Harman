@@ -17,6 +17,14 @@ Returns an object of class \code{summary.harmanresults}.
 \description{
 Summary method for class \code{\link{harmanresults}}.
 }
+\examples{
+library(HarmanData)
+data(OLF)
+expt <- olf.info$Treatment
+batch <- olf.info$Batch
+olf.harman <- harman(olf.data, expt, batch)
+summary(olf.harman)
+}
 \seealso{
 \code{\link{harmanresults}}
 }

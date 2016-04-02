@@ -1384,7 +1384,7 @@ private:
 
 			if (d_total_cocombs >  ((size_t) -1) )
 			{
-#if (_PRINT==1)
+#if (_PRINT==0)
 				 _PRINTSTD << "Error: CSimulateBatchDistribution::GetTotalAsSize_t(): Number of permutations exceeds the capacity of size_t data type" << std::endl;
 #endif
 				// TODO: This state implies we need to invoke a different random selection proceedure than the one currently provided.
@@ -1568,7 +1568,9 @@ public:
 					assert(d_nocombs <=  (size_t) -1) ; // '(size_t) -1' ends up the largest unsigned integer of size sizeof(size_t)
 					if (d_nocombs >  (size_t) -1) 
 					{
+#if (_PRINT==3)					  
 						_PRINTERROR << "Error: CMapSelectKFromN::FillCombinationsMatrix(): Number of combinations exceeds the capacity of size_t data type" << std::endl;
+#endif
 					}
 				
 					nocombs_ptr[tr][ba]   = d_nocombs ;
@@ -1598,7 +1600,7 @@ public:
     size_t  t_nocombs ;
     double   d_test_nocombs ;
     CMapSelectKFromN * temp_NKMap ; // The CMapSelectKFromN object lets us access array indecies of a binomial sequence
-		bool b_MAPPINGNEEDED ;				// We explicitly use the mapped range of 0...NumTreatments-1 so no need to map rom original (possibly disjoint) treatment numbers.
+		bool b_MAPPINGNEEDED ;				// We explicitly use the mapped range of 0...NumTreatments-1 so no need to map from original (possibly disjoint) treatment numbers.
 		b_MAPPINGNEEDED = false ;
 		for (size_t tr=0; tr < ptr_ExptData->GetExptStructureObject()->GetNumTreatments() ; tr++) // create the batch vectors
 		{
@@ -1616,15 +1618,22 @@ public:
 			t_nocombs = this->GetTotalAsSize_t(d_test_nocombs)  ;
 			std::vector<double> * v_vectd ;
 			//std::vector<size_t> * v_random64bitRangeIN  ;
-          
+#if (_PRINT==1)
+			_PRINTSTD << "CreateXMatrix() t_nocombs: " << t_nocombs << " \t max_combinations: " << max_combinations << std::endl  ;
+#endif          
            
 		if ((t_nocombs > max_combinations) | (forceRandomIN==true)) 
 		{
+#if (_PRINT==1)
+		  _PRINTSTD << "CreateXMatrix() entered forceRand=T section " << std::endl  ;
+#endif
           
             // Get a vector of common treatment samples - returns a vector of sample values from common treatments (treatment == tr) from each batch
 						
             std::vector<double> v_treatments = ptr_ExptData->GetExptStructureObject()->GetCommonTreatmentsSamples( ptr_ExptData->GetExptDataObject(), tr, b_MAPPINGNEEDED  ) ; 
-
+#if (_PRINT==1)
+          _PRINTSTD << "CreateXMatrix() obtained v_treatments vector " << std::endl  ;
+#endif
             // Get the random indexes for use to choose the treatment data and create averages 
             // This is not very efficient - using 64 bits to store an index that possibly will not be much greater than 500
             // Some optimisation has been done
@@ -1637,7 +1646,10 @@ public:
             	v_vectd  = (std::vector<double> *) new std::vector<double>(0) ;
             }
 			      ptr_v_s->AssignV_SumPtr(v_vectd) ;  // if k is zero (none of a particular treatment is present in this particular batch) then this will be an empty vector.
-
+#if (_PRINT==1)
+            _PRINTSTD << "CreateXMatrix() finished forceRand=T section " << std::endl  ;
+#endif
+		 
 		 }
      else  // do full combinatorial version
      {
@@ -2131,7 +2143,7 @@ class  CMatrixWithMeans
     for (size_t i =0 ; i < pvvd_matrix->size() ; i++)  
     {      
       std::vector<double>& v_temp = (*(pvvd_matrix))[i] ; // get the 'i'th vector<double> 
-      double * ptr_temp_dbl = &v_temp[0];                 // get a pointer to the first value in the vector<double>
+     //double * ptr_temp_dbl = &v_temp[0];                 // get a pointer to the first value in the vector<double>
       
       for (size_t j =0 ; j < v_temp.size() ; j++)         // copy each value in the ith vector<double> to the return vector<double>
       {
@@ -2409,6 +2421,8 @@ public:
 		_s0 = 0.0 ;
 		_s1 = 1.0 ;
 		
+	//	_PRINTSTD << "CProcessScoreData(): Entry in to function: " << std::endl ;
+		
 		ptr_SimBatchDist =  (CSimulateBatchDistribution*) new CSimulateBatchDistribution(arrayAlignIN, ptr_ExptPCADataIN, seedIN )  ;
 		ptr_SimBatchDist->FillCombinationsMatrix( max_combinationsIN ) ; // totalnocombs_ptr only needs to be called once
 		
@@ -2437,6 +2451,8 @@ public:
 		_batchnmeans_1 = _mat_1->ReturnCurrentMeans() ; // these will be the same as the original scores batch means
    
 		ptr_ExptPCADataIN->SetExptDataFromBatchVectors( _mat_0->GetVVDMatrixDataPtr() ) ; // set the data for the simulation
+		
+		
 		ptr_SimBatchDist->SimulateBatches(max_combinationsIN, forceRandomIN) ;
 		this->_confidence_0 = this->ptr_CalcConfidence->compute_confidence(&_batchnmeans_0, ptr_SimBatchDist->GetPtrMeans(), ptr_SimBatchDist->GetPtrStdDevs() ) ;
 
@@ -3036,7 +3052,7 @@ SEXP HarmanMain(SEXP pc_scores_rIN, SEXP group_rIN, SEXP limit_rIN, SEXP numrepe
    // critical sections around the random (_RANDFUNCTION_) calls in file CSelectRandom.h 
    // casue inefficiencies in this parallel version using R's random number generator
 #pragma omp parallel for  shared(ptr_Expt, pcascores, abort_bool) ordered schedule(static,1)
-    for (size_t numPCs = 0 ; numPCs < PCs ; numPCs++ )
+    for (int numPCs = 0 ; numPCs < PCs ; numPCs++ )
     {
 
         bool resbool ;

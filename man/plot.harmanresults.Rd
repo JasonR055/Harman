@@ -17,6 +17,14 @@ None
 \description{
 Plot method for instances of \code{\link{harmanresults}}.
 }
+\examples{
+library(HarmanData)
+data(OLF)
+expt <- olf.info$Treatment
+batch <- olf.info$Batch
+olf.harman <- harman(olf.data, expt, batch)
+plot(olf.harman)
+}
 \seealso{
 \code{\link{harmanresults}} \code{\link{pcaPlot}}
 }

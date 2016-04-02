@@ -4,6 +4,13 @@
 #' @param     ... further plotting parameters.
 #' @return    None
 #' @seealso  \code{\link{harmanresults}} \code{\link{pcaPlot}}
+#' @examples 
+#' library(HarmanData)
+#' data(OLF)
+#' expt <- olf.info$Treatment
+#' batch <- olf.info$Batch
+#' olf.harman <- harman(olf.data, expt, batch)
+#' plot(olf.harman)
 #' @export
 plot.harmanresults <- function(x, ...) {
   # set xlim and ylim  to be the same

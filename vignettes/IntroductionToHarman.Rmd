@@ -1,13 +1,21 @@
 ---
 title: "An Introduction to Harman"
 author: "Jason Ross and Yalchin Oytam"
-date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+date: "`r doc_date()`"
+package: "`r pkg_ver('Harman')`"
+abstract: >
+  Harman is a PCA and constrained optimisation based technique that maximises the removal of batch effects from datasets, with the constraint that the probability of overcorrection (i.e. removing genuine biological signal along with batch noise) is kept to a fraction which is set by the end-user.
+output: 
+  BiocStyle::html_document
 vignette: >
-  %\VignetteIndexEntry{Introduction to Harman}
+  %\VignetteIndexEntry{IntroductionToHarman}
   %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}
+  %\VignetteEncoding{UTF-8}  
 ---
+
+```{r style, eval=TRUE, echo = FALSE, results = 'asis'}
+BiocStyle::markdown()
+```
 
 # Introduction
 
@@ -19,11 +27,11 @@ Harman required three inputs:
   2. `expt`, a vector or factor containing the experimental grouping variable,
   3. `batch`, a vector or factor containing the batch grouping variable.
 
-The `matrix` is to be constructed with data values (typically microarray probes or sequencing counts) in rows and samples in columns, much like the `assayData` slot in the canonical Bioconductor `eSet` object, or any object which inherits from it. The data should have normalisation and any other global adjustment for noise reduction (such as background correction) applied prior to using Harman.
+The `matrix` is to be constructed with data values (typically microarray probes or sequencing counts) in rows and samples in columns, much like the `assayData` slot in the canonical  Bioconductor `eSet` object, or any object which inherits from it. The data should have normalisation and any other global adjustment for noise reduction (such as background correction) applied prior to using Harman.
 
 The fourth parameter of interest in Harman is `limit`, which sets the confidence limit for batch effect removal. The default is `limit=0.95`. We can consider the confidence limit an inverse of the alpha level, so there is `1 - limit` chance (default of `0.05`, or 5%) that some of the variance from the experimental variable is being removed along with the batch variance. This user specified `limit` parameter allows one to tune the aggressiveness of the batch effect removal. The more samples in each batch, the more opportunity Harman has to model the batch distributions, which allows a more precise identification (and subsequent removal) of batch effects.
 
-*The Harman package is available from Bioconductor or Github.*
+*The Harman package is available from Bioconductor (`r Biocpkg("Harman")`) or Github (`r Githubpkg("JasonR055/Harman")`).*
 ```{r, echo=FALSE}
 library(knitr)
 ```
@@ -38,7 +46,7 @@ library(RColorBrewer)
 
 ## Working with a simple transciptome microarray dataset.
 
-First off, let's load an example dataset where the batches and experimental variable are balanced.
+First off, let's load an example dataset from `r Biocexptpkg("HarmanData")` where the batches and experimental variable are balanced.
 ```{r}
 data(OLF)
 ```
@@ -146,9 +154,10 @@ We can see that most Harman adjusted probes were from batch 3 (samples 15 to 21)
 
 ## Another simple example
 
-The IMR90 Human lung fibroblast cell line data that was published in a paper by Johnson et al (doi: 10.1093/biostatistics/kxj037) comes with Harman as an example dataset.
+The IMR90 Human lung fibroblast cell line data that was published in a paper by Johnson et al [doi: 10.1093/biostatistics/kxj037](doi: 10.1093/biostatistics/kxj037) comes with Harman as an example dataset.
 ```{r}
 require(Harman)
+require(HarmanData)
 data(IMR90)
 ```
 
@@ -243,8 +252,7 @@ pca(imr90.data.corrected, 1, 3, cols=imr90.hm$factors$batch, cex=1.5, pch=16,
 
 ## Working with unbalanced and confounded data
 
-The dataset for this exercise is that discussed by Jeff Leek and others [here](http://www.nature.com/nrg/journal/v11/n10/pdf/nrg2825.pdf) and arises from this [paper](http://www.ncbi.nlm.nih.gov/pubmed/15173019). This was a bladder cancer study comparing Affymetrix HG-U133A microarray expression profiles across five groups: superficial transitional cell carcinoma (sTCC) with surrounding carcinoma *in situ* (CIS) lesions (sTCC+CIS) or without surrounding CIS lesions (sTCC-CIS), muscle invasive carcinomas (mTCC) with normal bladder mucosa from patients without a bladder cancer history (Normal) and biopsies from
-cystectomy specimens (Biopsy). The arrays were run on 5 different days (5 batches).
+The dataset (`r Biocexptpkg("bladderbatch")`) for this exercise is that discussed by Jeff Leek and others [here](http://www.nature.com/nrg/journal/v11/n10/pdf/nrg2825.pdf) and arises from this [paper](http://www.ncbi.nlm.nih.gov/pubmed/15173019). This was a bladder cancer study comparing Affymetrix HG-U133A microarray expression profiles across five groups: superficial transitional cell carcinoma (sTCC) with surrounding carcinoma *in situ* (CIS) lesions (sTCC+CIS) or without surrounding CIS lesions (sTCC-CIS), muscle invasive carcinomas (mTCC) with normal bladder mucosa from patients without a bladder cancer history (Normal) and biopsies from cystectomy specimens (Biopsy). The arrays were run on 5 different days (5 batches).
   
 First, loading the data.
 ```{r}
@@ -288,7 +296,7 @@ expt <- pData(bladderEset)$outcome
 batch <- pData(bladderEset)$batch
 bladder_harman <- harman(exprs(bladderEset), expt=expt, batch=batch)
 sum(bladder_harman$stats$correction < 1)
-````
+```
 
 Harman found `r sum(bladder_harman$stats$correction < 1)` of the
 `r length(bladder_harman$stats$correction)` PCs had a batch effect.
@@ -302,7 +310,7 @@ par(mfrow=c(1,1))
 plot(bladder_harman)
 ```
 
-The `summary()` shows PC3 to be highly batch-effected.
+The `summary()` shows PC3 to be highly affected by batch.
 ```{r, fig.height=4, fig.width=7}
 plot(bladder_harman, 1, 3)
 ```
@@ -324,7 +332,7 @@ comment(CorrectedBladderEset) <- 'Corrected'
 
 ### Limma analysis
 
-Let's check the effects of Harman with a `limma` analysis. First fitting the original data:
+Let's check the effects of Harman with a `r Biocpkg("limma")` analysis. First fitting the original data:
 ```{r}
 library(limma, quietly=TRUE)
 design <- model.matrix(~0 + expt)
@@ -351,7 +359,7 @@ We can see the dramatic effect Harman has had in reducing the number of signific
 
 ## Methylation data
 
-As an example, let's consider the Illumina Infinium HumanMethylation450 BeadChip data (450k array). First up, an important tip, **put M-values into Harman, not Beta-values.** Harman is designed for continuous ordinal data, not data which is constrained, such as Beta-values; which by definition are between 0 and 1. Input M-values into Harman and if Beta-values are needed downstream, convert the corrected M-values back into Beta-values using something like the `m2beta()` function in the `lumi` package, or the `ilogit2()` function in `minfi`.
+As an example, let's consider the Illumina Infinium HumanMethylation450 BeadChip data (450k array). First up, an important tip, **put M-values into Harman, not Beta-values.** Harman is designed for continuous ordinal data, not data which is constrained, such as Beta-values; which by definition are between 0 and 1. Input M-values into Harman and if Beta-values are needed downstream, convert the corrected M-values back into Beta-values using something like the `m2beta()` function in the `r Biocpkg("lumi")` package, or the `ilogit2()` function in `r Biocpkg("minfi")`.
   
 M-values also have the property of having far more centrality than Beta-values. PCA is a parametric technique and so it works best with an underlying Gaussian distribution to the data. While it has been historically shown that PCA works rather well in non-parametric settings, Harman might be expected to be more sensitive if the data is centred (M-values), rather than bimodal at the extremes (Beta-values).
   
@@ -364,7 +372,7 @@ ilogit2
 ilogit2(Inf)
 ilogit2(-Inf)
 ```
-A normalisation technique such as `preprocessIllumina()` in the minfi package will give Beta-values of exactly `0` or `1`, while a technique such as `SWAN` does not. Instead it incorporates a small offset, alpha, as suggested by [Pan Du et al](http://www.biomedcentral.com/content/pdf/1471-2105-11-587.pdf). While we do not recommend use of a normalisation technique that generate exact `0` or `1` Beta-values, sometimes, we realise, only this normalised data is available. For instance, when the data has been downloaded from a public resource, pre-normalised with no raw red and green channel data. For this case, we have supplied the `shiftBetas()` helper function in Harman to resolve this problem. We shift beta values of *exactly* `0` or `1` by a very small amount (typically `1e-4`) before transformation into M-values. As an example:
+A normalisation technique such as `preprocessIllumina()` in the minfi package will give Beta-values of exactly `0` or `1`, while a technique such as `SWAN()` from `r Biocpkg("missMethyl")` does not. Instead it incorporates a small offset, alpha, as suggested by [Pan Du et al](http://www.biomedcentral.com/content/pdf/1471-2105-11-587.pdf). While we do not recommend use of a normalisation technique that generate exact `0` or `1` Beta-values, sometimes, we realise, only this normalised data is available. For instance, when the data has been downloaded from a public resource, pre-normalised with no raw red and green channel data. For this case, we have supplied the `shiftBetas()` helper function in Harman to resolve this problem. We shift beta values of *exactly* `0` or `1` by a very small amount (typically `1e-4`) before transformation into M-values. As an example:
 
 ```{r}
 betas <- seq(0, 1, by=0.05)
@@ -381,6 +389,7 @@ logit2(newBetas)
 
 So, let's get underway and analyse the toy dataset supplied with minfi.
 ```{r}
+library(minfiData, quietly = TRUE)
 baseDir <- system.file("extdata", package="minfiData")
 targets <- read.450k.sheet(baseDir)
 ```
@@ -497,7 +506,7 @@ ms_hm <- reconstructData(methHarman)
 betas_hm <- m2beta(ms_hm)
 ```
 
-In downstream differential methylation analysis using `Limma` or otherwise, care must be taken to interpret the results. As Harman was run with the `expt` variable set to `status`, any other variation unrelated to `status` which is unbalanced across the two slides is considered as batch noise. For example, we have already shown that `sex` is a highly influential factor and it is unbalanced across the slides; only person of `id3` is male and both the normal and cancer samples are on slide `5723646052`. Therefore, we expect Harman to attribute this gender effect to a slide effect.
+In downstream differential methylation analysis using `r Biocpkg("limma")` or otherwise, care must be taken to interpret the results. As Harman was run with the `expt` variable set to `status`, any other variation unrelated to `status` which is unbalanced across the two slides is considered as batch noise. For example, we have already shown that `sex` is a highly influential factor and it is unbalanced across the slides; only person of `id3` is male and both the normal and cancer samples are on slide `5723646052`. Therefore, we expect Harman to attribute this gender effect to a slide effect.
 
 In the specification of a linear model of `model.matrix(~id + group)`, we should then expect to find no differential methylation in person `id3`, the male. Let's try this:
 
@@ -546,7 +555,7 @@ msms.dataset
 
 ### Preprocessing
 
-The data matrix in an `MSnSet` object may have all zero rows (if it's a subset of a larger object) and some samples may have NA values, which correspond to proteins not identified in that particular sample. Principle components analysis cannot be undertaken on matrices with such features. So first we can use the wrapper function `pp.msms.data`, which removes all zero rows and replaces `NA` with `0`.
+The data matrix in an `MSnSet` object from package `r Biocexptpkg("msmsEDA")` may have all zero rows (if it's a subset of a larger object) and some samples may have NA values, which correspond to proteins not identified in that particular sample. Principle components analysis cannot be undertaken on matrices with such features. So first we can use the wrapper function `pp.msms.data()`, which removes all zero rows and replaces `NA` with `0`.
 
 ```{r}
 # Preprocess to remove rows which are all 0 and replace NA values with 0.
@@ -603,7 +612,7 @@ rm(ms_exprs_hm, log_ms_exprs_hm)
 
 This example is an illustration of how Harman will have reduced power in teasing apart biological and technical variance when presented with a very small dataset (2 replicates and 2 conditions).
 
-To illustrate, we use the toy dataset in `library(affydata)`. The `Dilution` data within relates to two sources of cRNA, A (human liver tissue) and B (Central Nervous System cell line), which have been hybridized to human array (HGU95A) in a range of proportions and dilutions.
+To illustrate, we use the toy dataset in `r Biocexptpkg("affydata")`. The `Dilution` data within relates to two sources of cRNA, A (human liver tissue) and B (Central Nervous System cell line), which have been hybridized to human array (HGU95A) in a range of proportions and dilutions.
 
 This toy example is taken from arrays hybridized to source A at 10.0 and 20 μg. There are two replicate arrays for each generated cRNA, with each array replicate processed in a different scanner. [*For more information see Gautier et al., affy - Analysis of Affymetrix GeneChip data at the probe level*](http://bioinformatics.oxfordjournals.org/content/20/3/307.full.pdf).
 ```{r, warning=FALSE}
