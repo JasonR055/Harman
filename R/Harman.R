@@ -19,11 +19,12 @@
 #' @param limit numeric, confidence limit. Indicates the limit of confidence in
 #' which to stop removing a batch effect. Must be between \code{0} and \code{1}.
 #' @param numrepeats integer, the number of repeats in which to run the
-#' simulated batch mean distribution estimator.
-#' @param randseed integer, the seed for random number generation with \code{0}
-#' (default) implying the system time is used.
-#' @param forceRand logical, to enforce Harman to use the unbalanced (more CPU
-#' intensive) algorithm to compute corrections. Force the simulated mean code to
+#' simulated batch mean distribution estimator using the random selection
+#' algorithm. (N.B. 32 bit Windows versions may have an upper limit of 300000
+#' before catastrophic failure)
+#' @param randseed integer, the seed for random number generation.
+#' @param forceRand logical, to enforce Harman to use a random selection
+#' algorithm to compute corrections. Force the simulated mean code to
 #' use random selection of scores to create the simulated batch mean (rather
 #' than full explicit calculation from all permutations).
 #' @param printInfo logical, whether to print information during computation or
@@ -64,7 +65,7 @@
 #' arrowPlot(res, 1, 3)
 #' @export
 harman <- function(datamatrix, expt, batch, limit=0.95, numrepeats=100000L,
-                   randseed=0L, forceRand=FALSE, printInfo=FALSE,
+                   randseed, forceRand=FALSE, printInfo=FALSE,
                    strict=FALSE) {
   
   ######  Coerce a data.frame to a matrix  ##### 
@@ -112,7 +113,15 @@ harman <- function(datamatrix, expt, batch, limit=0.95, numrepeats=100000L,
                "\".", sep=""))
   }
   if(!is.numeric(numrepeats)) stop("'numrepeats' needs to be numeric.")
-  if(!is.numeric(randseed)) stop("'randseed' needs to be numeric.")
+  
+  if (!missing(randseed)) {
+    if(!is.numeric(randseed)) stop("'randseed' needs to be numeric.")
+    set.seed(randseed)
+  } else {
+    randseed<- 0
+  }
+  
+  
 
   
   #####  Special sanity checks  #####
@@ -168,6 +177,9 @@ harman <- function(datamatrix, expt, batch, limit=0.95, numrepeats=100000L,
   group <- as.matrix(data.frame(expt=as.integer(expt), batch=as.integer(batch)))
   rownames(group) <- sample_names
 
+  
+
+  
   if(printInfo == TRUE) cat('Now calling the Rcpp layer.\n')
   res <- .callHarman(pc_data_scores, group, limit, numrepeats,
                                  randseed, forceRand, printInfo)

@@ -152,6 +152,10 @@ image(x=1:ncol(olf.data.diff),
 
 We can see that most Harman adjusted probes were from batch 3 (samples 15 to 21), while batch 1 is relatively unchanged. In batches 2 and 3, often the same probes were adjusted to a larger extent in batch 3. This suggests some probes on this array design are prone to a batch effect.
 
+```{r, echo=FALSE}
+rm(list=ls()[grep("olf", ls())])
+```
+
 ## Another simple example
 
 The IMR90 Human lung fibroblast cell line data that was published in a paper by Johnson et al [doi: 10.1093/biostatistics/kxj037](doi: 10.1093/biostatistics/kxj037) comes with Harman as an example dataset.
@@ -249,6 +253,9 @@ pca(imr90.data.corrected, 1, 3, cols=imr90.hm$factors$batch, cex=1.5, pch=16,
     main='PCA, Corrected')
 ```
 
+```{r, echo=FALSE}
+rm(list=ls()[grep("imr90", ls())])
+```
 
 ## Working with unbalanced and confounded data
 
@@ -356,6 +363,10 @@ summary(classifyTestsT(fit2_hm))
 ```
 
 We can see the dramatic effect Harman has had in reducing the number of significant microarray probes. The huge reduction in the `Biopsy - Normal` contrast makes biological sense, about half of the biopsies were from cystectomies were histologically normal. The Harman corrected data on the `sTCCwCIS - sTCC` contrast suggests that surrounding *in situ* lesions (CIS) does not overly impact the transcriptome of superficial transitional cell carcinoma (sTCC).
+
+```{r, echo=FALSE}
+rm(list=ls()[!grepl("^pca$", ls())])
+```
 
 ## Methylation data
 
@@ -538,6 +549,9 @@ summary_fit
 
 We also note, our ability to detect cancer-related differential methylation has been enhanced. There are now `r summary_fit_hm[1, 4] - summary_fit[1, 4]` more hypermethylated CpG probes and `r summary_fit_hm[3, 4] - summary_fit[3, 4]` more hypomethylated CpG probes.
 
+```{r, echo=FALSE}
+rm(list=ls()[!grepl("^pca$", ls())])
+```
 
 ## Mass Spectrophotometry Data
 
@@ -605,7 +619,10 @@ ms_exprs_hm <- 2^log_ms_exprs_hm - 1
 # Place corrected data into a new 'MSnSet' instance
 msms_pp_hm <- msms_pp
 exprs(msms_pp_hm) <- ms_exprs_hm
-rm(ms_exprs_hm, log_ms_exprs_hm)
+```
+
+```{r, echo=FALSE}
+rm(list=ls()[!grepl("^pca$", ls())])
 ```
 
 ## Working with very small datasets

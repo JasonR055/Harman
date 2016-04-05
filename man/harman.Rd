@@ -5,7 +5,7 @@
 \title{Harman batch correction method}
 \usage{
 harman(datamatrix, expt, batch, limit = 0.95, numrepeats = 100000L,
-  randseed = 0L, forceRand = FALSE, printInfo = FALSE, strict = FALSE)
+  randseed, forceRand = FALSE, printInfo = FALSE, strict = FALSE)
 }
 \arguments{
 \item{datamatrix}{matrix or data.frame, the data values to correct with
@@ -23,13 +23,14 @@ removed).}
 which to stop removing a batch effect. Must be between \code{0} and \code{1}.}
 
 \item{numrepeats}{integer, the number of repeats in which to run the
-simulated batch mean distribution estimator.}
+simulated batch mean distribution estimator using the random selection
+algorithm. (N.B. 32 bit Windows versions may have an upper limit of 300000
+before catastrophic failure)}
 
-\item{randseed}{integer, the seed for random number generation with \code{0}
-(default) implying the system time is used.}
+\item{randseed}{integer, the seed for random number generation.}
 
-\item{forceRand}{logical, to enforce Harman to use the unbalanced (more CPU
-intensive) algorithm to compute corrections. Force the simulated mean code to
+\item{forceRand}{logical, to enforce Harman to use a random selection
+algorithm to compute corrections. Force the simulated mean code to
 use random selection of scores to create the simulated batch mean (rather
 than full explicit calculation from all permutations).}
 

@@ -120,13 +120,15 @@ double round(double val)
 
 
 #if (_USE_RCPP==1)
-//#define _RANDFUNCTION_ (unif_rand() * ((unsigned int)-1))
+//#define _RANDFUNCTION_ (unif_rand() * (4294967295ul))
 #define _PRINTERROR Rcpp::Rcerr
 #define _PRINTSTD Rcpp::Rcout
+#define _USE_OMP 0
 #else
 //#define _RANDFUNCTION_ rand()
 #define _PRINTERROR std::cerr
 #define _PRINTSTD std::cout
+#define _USE_OMP 1
 #endif
 
 
@@ -1385,7 +1387,7 @@ private:
 			if (d_total_cocombs >  ((size_t) -1) )
 			{
 #if (_PRINT==0)
-				 _PRINTSTD << "Error: CSimulateBatchDistribution::GetTotalAsSize_t(): Number of permutations exceeds the capacity of size_t data type" << std::endl;
+				 //_PRINTERROR << "Warning: CSimulateBatchDistribution::GetTotalAsSize_t(): Number of permutations exceeds the capacity of size_t data type" << std::endl;
 #endif
 				// TODO: This state implies we need to invoke a different random selection proceedure than the one currently provided.
 				// exit(-1) ;
@@ -1569,7 +1571,7 @@ public:
 					if (d_nocombs >  (size_t) -1) 
 					{
 #if (_PRINT==3)					  
-						_PRINTERROR << "Error: CMapSelectKFromN::FillCombinationsMatrix(): Number of combinations exceeds the capacity of size_t data type" << std::endl;
+						//_PRINTERROR << "Warning: CMapSelectKFromN::FillCombinationsMatrix(): Number of combinations exceeds the capacity of size_t data type" << std::endl;
 #endif
 					}
 				
@@ -3051,12 +3053,16 @@ SEXP HarmanMain(SEXP pc_scores_rIN, SEXP group_rIN, SEXP limit_rIN, SEXP numrepe
    
    // critical sections around the random (_RANDFUNCTION_) calls in file CSelectRandom.h 
    // casue inefficiencies in this parallel version using R's random number generator
+#if (_USE_OMP==1)
 #pragma omp parallel for  shared(ptr_Expt, pcascores, abort_bool) ordered schedule(static,1)
+#endif
     for (int numPCs = 0 ; numPCs < PCs ; numPCs++ )
     {
 
         bool resbool ;
+#if (_USE_OMP==1)
         #pragma omp critical 
+#endif      
         {
             resbool =  abort_bool == false ;
         }
@@ -3114,7 +3120,9 @@ SEXP HarmanMain(SEXP pc_scores_rIN, SEXP group_rIN, SEXP limit_rIN, SEXP numrepe
             correction_ptr[numPCs] = ptr_ProcsessScore->GetBestCorrection() ; 
            
            if (printInfo) {
+#if (_USE_OMP==1)             
             #pragma omp ordered
+#endif
              Rcpp::Rcout << "PC :\t" << numPCs+1 << "/" << PCs << "\tconfidence: \t" << ptr_ProcsessScore->GetBestCConfidence() << " \tcorrection: \t" << ptr_ProcsessScore->GetBestCorrection() << std::endl ;
            }
            
@@ -3129,6 +3137,7 @@ SEXP HarmanMain(SEXP pc_scores_rIN, SEXP group_rIN, SEXP limit_rIN, SEXP numrepe
         // Temporarily comment out the next omp master pragma to make the code compile.
         
        // #pragma omp master
+#if (_USE_OMP==1)       
 #ifdef _OPENMP
        if ( omp_get_thread_num()==0 ) // requires #include <omp.h>
 #endif
@@ -3144,29 +3153,16 @@ SEXP HarmanMain(SEXP pc_scores_rIN, SEXP group_rIN, SEXP limit_rIN, SEXP numrepe
             } // end critical
         }
          
- 
+#else
+         Rcpp::checkUserInterrupt() ;
+#endif
   } // end of openmp for loop
     
 #if (_USE_RCPP==1)
     	PutRNGstate();
 #endif
     Rcpp::NumericVector corrected_scores(pcascores->_scores.begin(), pcascores->_scores.end()) ;
-  /* 
-    // Copy stl results into Rcpp vectors:
-    Rcpp::NumericVector confidence_rcpp(confidence.begin(), confidence.end() ) ; // = Rcpp::NumericVector::create( PCs ) ;
-    Rcpp::NumericVector correction_rcpp(correction.begin(), correction.end() ) ; // = Rcpp::NumericVector::create( PCs ) ;
-    Rcpp::NumericVector corrected_scores(pcascores->_scores.begin(), pcascores->_scores.end()) ;
- 
 
-    // N.B. SamplesAsCols is the current (C/C++) data format
-    double * scores_ptr = pcascores->ReturnPointerToVectorData() ;
-    Rcpp::NumericMatrix corrected_scores(PCs, samples) ;  // As R is back to front (Fortran) major. we will swap the R side matrix to have "samples as rows"
-    for( size_t pcnum = 0 ; pcnum < PCs ; pcnum++ ){
-      for( size_t sample_num=0; sample_num<samples; sample_num++){
-        corrected_scores(pcnum, sample_num ) = scores_ptr[pcnum * PCs +  sample_num ] ;
-      }
-    }
- */
   
   delete pcascores ;
   delete ptr_Expt ;

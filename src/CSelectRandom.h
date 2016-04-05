@@ -18,17 +18,19 @@ enum replacement_type {WITHREPLACEMENT, WITHOUTREPLACEMENT} ;
 // Most of the supplied uniform generators return 32-bit integer values that are converted to doubles, 
 // so they take at most 2^32 distinct values and long runs will return duplicated values
 #if (_USE_RCPP==1)
-#define _RANDFUNCTION_ (unif_rand() * ((unsigned int)-1))
+#define _RANDFUNCTION_ (unif_rand() * (4294967295ul))
 // N.B. #define _RANDSEED_FUNCTION will not do anything for the R RNG
 #define _RANDSEED_FUNCTION ;
 //#define _RANDFUNCTION_ rand()
 #define _PRINTERROR Rcpp::Rcerr
 #define _PRINTSTD Rcpp::Rcout
+#define _USE_OMP 0
 #else
 #define _RANDFUNCTION_ rand()
 #define _RANDSEED_FUNCTION srand(seedIN)
 #define _PRINTERROR std::cerr
 #define _PRINTSTD std::cout
+#define _USE_OMP 1
 #endif
 
 // #define _SEEDCOUNTER std::chrono::system_clock::now().time_since_epoch().count()
@@ -899,7 +901,7 @@ std::vector<unsigned int> * CSelectRandom<T>::ReturnVectOf32bitIntegersInRange_C
 		  long long int randSizeBits ;
 		  long long int numRandsNeeded ;
 #if (_USE_RCPP==1)
-			randSizeBits = this->GetNumbitsRequired(4294967295) ;  // we assume that the R docs here https://stat.ethz.ch/R-manual/R-devel/library/base/html/Random.html are correct
+			randSizeBits = this->GetNumbitsRequired(4294967295ul) ;  // we assume that the R docs here https://stat.ethz.ch/R-manual/R-devel/library/base/html/Random.html are correct
 #else
 			randSizeBits = this->GetNumbitsRequired(RAND_MAX) ;	
 #endif	
@@ -933,7 +935,9 @@ std::vector<unsigned int> * CSelectRandom<T>::ReturnVectOf32bitIntegersInRange_C
 				reject = 0 ;
 				currval = 0 ;
 				//	for (size_t t1 = 0 ; t1 < v_random64bitIN->size() ; t1++)
-//#pragma omp critical 
+#if (_USE_OMP==1)
+#pragma omp critical 
+#endif
 {
 
 				while (currval < howManyIN)
@@ -986,7 +990,7 @@ std::vector<size_t> * CSelectRandom<T>::ReturnVectOf64bitIntegersInRange_CSTDLIB
 				size_t numRandsNeeded ;
     
 #if (_USE_RCPP==1)
-    randSizeBits = this->GetNumbitsRequired(4294967295) ;  // we assume that the R docs here https://stat.ethz.ch/R-manual/R-devel/library/base/html/Random.html are correct
+    randSizeBits = this->GetNumbitsRequired(4294967295ul) ;  // we assume that the R docs here https://stat.ethz.ch/R-manual/R-devel/library/base/html/Random.html are correct
 #else
     randSizeBits = this->GetNumbitsRequired(RAND_MAX) ;	
 #endif 

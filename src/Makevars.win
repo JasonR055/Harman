@@ -29,8 +29,8 @@
 
 
 PKG_CPPFLAGS =  -D_ARRAYALIGNEMT=4  -D_USE_RCPP=1 
-PKG_CXXFLAGS =  $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "Rcpp:::CxxFlags()") -std=c++0x $(SHLIB_OPENMP_CFLAGS)  
-PKG_LIBS =  $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "Rcpp:::LdFlags()") $(SHLIB_OPENMP_CFLAGS)
+PKG_CXXFLAGS =  $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "Rcpp:::CxxFlags()") -std=c++0x ###   $(SHLIB_OPENMP_CFLAGS)  
+PKG_LIBS =  $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "Rcpp:::LdFlags()") ###   $(SHLIB_OPENMP_CFLAGS)
 
 # To override other (non-package) variables, then set them in a file called HOME/.R/Makevars.win 
 # e.g. CXX1XSTD=-std=c++11 

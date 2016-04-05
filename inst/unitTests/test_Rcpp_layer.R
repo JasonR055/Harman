@@ -49,11 +49,11 @@ test.forceRand <- function() {
   data(OLF)
   olf <- list()
   olf[['F']] <- harman(olf.data, expt=olf.info$Treatment,
-                       batch=olf.info$Batch, numrepeats=1e5, randseed=42,
+                       batch=olf.info$Batch, numrepeats=300000, randseed=42,
                        forceRand=FALSE)
   
   olf[['T']] <- harman(olf.data, expt=olf.info$Treatment,
-                       batch=olf.info$Batch, numrepeats=1e5, randseed=42,
+                       batch=olf.info$Batch, numrepeats=300000, randseed=42,
                        forceRand=TRUE)
   
   results <- list(imr=imr, npm=npm, olf=olf)
