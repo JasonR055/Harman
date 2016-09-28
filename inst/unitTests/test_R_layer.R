@@ -24,15 +24,53 @@ test.harman <- function() {
   checkException(harman(as.matrix(olf.data), expt, batch, randseed='bad'))
   checkException(harman(as.matrix(olf.data), expt[1:5], batch))
   checkException(harman(as.matrix(olf.data), expt, batch[1:5]))
-  checkException(harman(as.matrix(olf.data), expt=rep(1, ncol(olf.data)), batch))
-  checkException(harman(as.matrix(olf.data), expt, batch=rep(1, ncol(olf.data))))
+  checkException(harman(as.matrix(olf.data),
+                        expt=rep(1, ncol(olf.data)), batch))
+  checkException(harman(as.matrix(olf.data),
+                        expt, batch=rep(1, ncol(olf.data))))
 
   badb <- batch
   badb[1] <- NA
   checkException(harman(as.matrix(olf.data), expt, batch=badb))
   
   is_corrected_pc <- res$stats$correction < 1
-  checkEquals(res$original[, !is_corrected_pc], res$corrected[, !is_corrected_pc])
+  checkEquals(res$original[, !is_corrected_pc],
+              res$corrected[, !is_corrected_pc])
+}
+
+
+test.scores.standardcase <- function() {
+  
+  # Standard case for nrow(x) >= ncol(x)
+  olf_prcomp <- prcomp(t(olf.data))
+  olf_scores <- Harman:::harmanScores(olf.data)
+
+  checkIdentical(dim(olf_scores$rotation), dim(olf.data),
+                 msg='scores, dimensions test')
+  checkEquals(olf_prcomp$center, olf_scores$center, msg='scores, center test')
+  checkEquals(olf_prcomp$rotation, olf_scores$rotation,
+              msg='scores, rotation test')
+  checkEquals(olf_prcomp$x, olf_scores$scores, msg='scores, scores test')
+}
+
+
+test.scores.specialcase <- function() {
+  
+  # Special case for nrow(x) < ncol(x)
+  #sml <- ncol(olf.data) - 1
+  #olf_sml_prcomp <- prcomp(t(olf.data[1:sml, ]))
+  #olf_sml_scores <- Harman:::harmanScores(olf.data[1:sml, ])
+  
+  #res_sml <- harman(as.matrix(olf.data[1:sml, ]), expt, batch)
+  #reconstructData(res_sml, this='original')
+
+  #checkIdentical(dim(olf_sml_scores$rotation), dim(olf.data[1:sml, ]),
+  #               msg='scores, special case dimension test')
+  #checkEquals(olf_sml_prcomp$center, olf_sml_scores$center,
+  #            msg='scores, special case center test')
+  #checkIdentical(dim(olf_sml_scores$scores), c(ncol(olf.data), ncol(olf.data)),
+  #               msg='scores, special case dimension2 test')
+  
 }
 
 
@@ -59,27 +97,13 @@ test.pcaPlot <- function() {
 }
 
 
-#test.forceRand <- function() {
-#
-#  is_same_correction <- resf$stats$correction == res$stats$correction
-#  checkEquals(res$corrected[, is_same_correction], resf$corrected[, is_same_correction])
-#}
-
-#test.forceRand2 <- function() {
-
-  #is_same_correction <- ((resf$stats$correction == res$stats$correction) & (res$stats$correction != 1.0)) 
-  #checkEquals(res$corrected[, is_same_correction], resf$corrected[, is_same_correction])
-  #is_same_correction <- (abs(res$stats$correction - resf$stats$correction) > 0.02)
-  #checkEquals(sum(is_same_correction), 0)
-#}
-
-
 test.two_batches <- function() {
 
   two_batch <- olf.info$Batch %% 2
   res2b <- harman(as.matrix(olf.data), expt=expt, batch=two_batch)
   is_same_correction <- resf$stats$correction == res2b$stats$correction
-  checkEquals(res$corrected[, is_same_correction], res2b$corrected[, is_same_correction])
+  checkEquals(res$corrected[, is_same_correction],
+              res2b$corrected[, is_same_correction])
 }
 
 
@@ -90,6 +114,7 @@ test.three_batches <- function() {
   
   res3b <- harman(as.matrix(olf.data), expt=expt, batch=three_batch)
   is_same_correction <- resf$stats$correction == res3b$stats$correction
-  checkEquals(res$corrected[, is_same_correction], res3b$corrected[, is_same_correction])
+  checkEquals(res$corrected[, is_same_correction],
+              res3b$corrected[, is_same_correction])
 }
 

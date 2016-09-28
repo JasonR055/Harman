@@ -1,8 +1,0 @@
-
-Changelog
-=========
-
-0.9000	Initial public version
-0.9001	Modify Rcpp code and remove R layer workaround for confounded data.
-0.99    First Bioconductor version. Mostly code cleanup changes.
-0.991   Address build issues.

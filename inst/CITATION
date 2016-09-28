@@ -1,0 +1,30 @@
+citEntry(entry="article",
+         title = "Risk-conscious correction of batch effects: maximising information extraction from high-throughput genomic datasets",
+         author = personList( as.person("Yalchin Oytam"), 
+                              as.person("Fariborz Sobhanmanesh"),
+                              as.person("Konsta Duesing"),
+                              as.person("Joshua C. Bowden"),
+                              as.person("Megan Osmond-McLeod"),
+                              as.person("Jason Ross")),
+         year = 2016,
+         journal = "BMC Bioinformatics",
+         volume = "17",
+         number = "1",
+         pages = "1--17",
+         doi = "10.1186/s12859-016-1212-5",
+         url = "http://dx.doi.org/10.1186/s12859-016-1212-5",
+         
+         textVersion = 
+         paste("Yalchin Oytam et al (2016):", 
+               "Risk-conscious correction of batch effects: maximising information extraction from high-throughput genomic datasets.",
+               "BMC Bioinformatics 17:1" ) )
+
+
+
+
+
+
+
+
+
+

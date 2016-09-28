@@ -32,6 +32,7 @@
 #' batch <- olf.info$Batch
 #' olf.harman <- harman(olf.data, expt, batch)
 #' arrowPlot(olf.harman, pc_x=2, pc_y=3, length=0.2)
+#' @importFrom graphics arrows points legend plot
 #' @export
 arrowPlot <- function(harmanresults, pc_x=1, pc_y=2, colBy='batch',
                       palette="rainbow", col, length=0.1, legend=TRUE, ...) {
@@ -49,13 +50,13 @@ arrowPlot <- function(harmanresults, pc_x=1, pc_y=2, colBy='batch',
     yrange <- range(c(harmanresults$original[, pc_y],
                       harmanresults$corrected[, pc_y]))
     
-    plot(x=NA,
-         y=NA,
-         xlab=colnames(harmanresults$original)[pc_x],
-         ylab=colnames(harmanresults$original)[pc_y],
-         xlim=xrange,
-         ylim=yrange,
-         type='n')
+    graphics::plot(x=NA,
+                   y=NA,
+                   xlab=colnames(harmanresults$original)[pc_x],
+                   ylab=colnames(harmanresults$original)[pc_y],
+                   xlim=xrange,
+                   ylim=yrange,
+                   type='n')
     
     if(missing(col)) {
       mylegend <- harmanresults$factors[, colBy]
@@ -63,26 +64,26 @@ arrowPlot <- function(harmanresults, pc_x=1, pc_y=2, colBy='batch',
       col <- palette[mylegend]
       
       if(legend == TRUE) {
-        legend(x=min(xrange), y=max(yrange),
-               legend=levels(mylegend),
-               fill=palette, cex=0.7)
-      }
+        graphics::legend(x="topleft", # x=min(xrange), y=max(yrange)
+                         legend=levels(mylegend),
+                         fill=palette, cex=0.7)
+        }
     }
     
     if(harmanresults$stats$correction[pc_x] != 1 ||
        harmanresults$stats$correction[pc_y] != 1) {
-      arrows(x0=harmanresults$original[, pc_x],
-             y0=harmanresults$original[, pc_y],
-             x1=harmanresults$corrected[, pc_x],
-             y1=harmanresults$corrected[, pc_y],
-             col=col,
-             length=length, ...)
-    } else {     # Case for no correction
-      points(harmanresults$original[, pc_x],
-             harmanresults$original[, pc_y],
-             col=col,
-             pch=4,
-             ...)
-    }
+      graphics::arrows(x0=harmanresults$original[, pc_x],
+                       y0=harmanresults$original[, pc_y],
+                       x1=harmanresults$corrected[, pc_x],
+                       y1=harmanresults$corrected[, pc_y],
+                       col=col,
+                       length=length, ...)
+      } else {     # Case for no correction
+        graphics::points(harmanresults$original[, pc_x],
+                         harmanresults$original[, pc_y],
+                         col=col,
+                         pch=4,
+                         ...)
+        }
 }
 

@@ -4,7 +4,7 @@
 \alias{prcompPlot}
 \title{PCA plot}
 \usage{
-prcompPlot(object, pc_x = 1, pc_y = 2, colFactor = NULL,
+prcompPlot(object, pc_x = 1, pc_y = 2, scale = FALSE, colFactor = NULL,
   pchFactor = NULL, palette = "rainbow", legend = TRUE, ...)
 }
 \arguments{
@@ -13,6 +13,8 @@ prcompPlot(object, pc_x = 1, pc_y = 2, colFactor = NULL,
 \item{pc_x}{integer, principle component for the plot x dimension.}
 
 \item{pc_y}{integer, principle component for the plot y dimension.}
+
+\item{scale}{logical, whether to scale to unit variance before PCA.}
 
 \item{colFactor}{factor or vector, colour the points by this factor,
 default is \code{NULL}.}
@@ -39,7 +41,7 @@ A data.frame object will be coerced internally to a matrix.
 Matrices must be of type \code{double} or \code{integer}. The
 \code{prcompPlot} function will then perform a principle component analysis
 on the data prior to plotting. The function is call
-is \code{prcomp(t(object), retx=TRUE, center=TRUE, scale.=TRUE)}.
+is \code{prcomp(t(object), retx=TRUE, center=TRUE, scale.=scale)}.
 Instead of specifying a data.frame or matrix, a pre-made \code{prcomp} object
 can be given to \code{prcompPlot}. In this case, care should be taken in
 setting the appropriate value of \code{scale.}. If a vector is given to

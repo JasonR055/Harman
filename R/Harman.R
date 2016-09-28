@@ -3,7 +3,8 @@
 #' that maximises the removal of batch effects from datasets, with the
 #' constraint that the probability of overcorrection (i.e. removing genuine
 #' biological signal along with batch noise) is kept to a fraction which is set
-#' by the end-user (Oytam et al, 2016).
+#' by the end-user (Oytam et al, 2016;
+#' \url{http://dx.doi.org/10.1186/s12859-016-1212-5}).
 #' 
 #' Harman expects unbounded data, so for example, with HumanMethylation450
 #' arrays do not use the Beta statistic (with values constrained between 0 and
@@ -29,7 +30,6 @@
 #' than full explicit calculation from all permutations).
 #' @param printInfo logical, whether to print information during computation or
 #' not.
-#' @param strict logical
 #' @return  A \code{\link{harmanresults}} S3 object.
 #' @details The \code{datamatrix} needs to be of type \code{integer} or
 #' \code{numeric}, or alternatively a data.frame that can be coerced into one
@@ -39,20 +39,22 @@
 #' \code{eSet} object, or any object which inherits from it. The data should
 #' have normalisation and any other global adjustment for noise reduction
 #' (such as background correction) applied prior to using Harman.
-#' The number of simulations, \code{numrepeats} parameter, should probably
-#' should be at least 100,000. The underlying principle of Harman rests upon
-#' PCA, which is a parametric technique. This implies Harman should be optimal
-#' when the data is normally distributed. However, PCA is known to be rather
-#' robust to very non-normal data.
+#' For converge, the number of simulations, \code{numrepeats} parameter should
+#' probably should be at least 100,000. The underlying principle of Harman rests
+#' upon PCA, which is a parametric technique. This implies Harman should be
+#' optimal when the data is normally distributed. However, PCA is known to be
+#' rather robust to very non-normal data.
 #' @seealso \code{\link{harman}}, \code{\link{reconstructData}},
 #' \code{\link{pcaPlot}}, \code{\link{arrowPlot}}
-#' @references Oytam, et al. (2016).
+#' @references Oytam et al (2016) BMC Bioinformatics 17:1.
+#' DOI: 10.1186/s12859-016-1212-5
 #' @examples
 #' library(HarmanData)
 #' data(OLF)
 #' expt <- olf.info$Treatment
 #' batch <- olf.info$Batch
 #' olf.harman <- harman(olf.data, expt, batch)
+#' plot(olf.harman)
 #' olf.data.corrected <- reconstructData(olf.harman)
 #'
 #' ## Reading from a csv file
@@ -65,8 +67,7 @@
 #' arrowPlot(res, 1, 3)
 #' @export
 harman <- function(datamatrix, expt, batch, limit=0.95, numrepeats=100000L,
-                   randseed, forceRand=FALSE, printInfo=FALSE,
-                   strict=FALSE) {
+                   randseed, forceRand=FALSE, printInfo=FALSE) {
   
   ######  Coerce a data.frame to a matrix  ##### 
   if(is.data.frame(datamatrix)) {
@@ -118,14 +119,12 @@ harman <- function(datamatrix, expt, batch, limit=0.95, numrepeats=100000L,
     if(!is.numeric(randseed)) stop("'randseed' needs to be numeric.")
     set.seed(randseed)
   } else {
-    randseed<- 0
+    randseed <- 0
   }
   
-  
-
-  
-  #####  Special sanity checks  #####
-  #  Specical cases of sanity checking using strict to give a warning or stop
+  strict <- FALSE
+  #  Sanity checking to see if the expt vector length is equal to the
+  #  number of matrix columns
   if(length(expt) != ncol(datamatrix)) {
     msg <- "'expt' vector not equal to the number of datamatrix columns."
     if(strict == FALSE) {
@@ -160,15 +159,16 @@ harman <- function(datamatrix, expt, batch, limit=0.95, numrepeats=100000L,
   # Don't shift the original data into the .RunHarman function as we just need
   # the PCs to kick it off.
   if(printInfo == TRUE) cat('Performing PCA... ')
-  pca <- prcomp(t(datamatrix), retx=TRUE, center=TRUE)
   
-  # Try and free up RAM
-  #data_names <- dimnames(datamatrix)
+  #pca <- prcomp(t(datamatrix), retx=TRUE, center=TRUE, scale. = FALSE)
+  #pc_data_scores <- pca$x[, 1:(ncol(pca$x) - 1)]
+  pca <- harmanScores(datamatrix)
+  pc_data_scores <- pca$scores
+  
+  # Try and free up RAM, but keep the sample names first.
   sample_names <- dimnames(datamatrix)[[2]]
-  #names(data_names) <- c('datapoints', 'samples')
   rm(datamatrix)
   gc()
-  pc_data_scores <- pca$x[, 1:(ncol(pca$x) - 1)]
   if(printInfo == TRUE) cat('done.\n')
   
   #####  Call Rcpp wrapper function  #####
@@ -178,12 +178,13 @@ harman <- function(datamatrix, expt, batch, limit=0.95, numrepeats=100000L,
   rownames(group) <- sample_names
 
   
-
-  
   if(printInfo == TRUE) cat('Now calling the Rcpp layer.\n')
-  res <- .callHarman(pc_data_scores, group, limit, numrepeats,
-                                 randseed, forceRand, printInfo)
+  #res <- .callHarman(pc_data_scores, group, limit, numrepeats,
+  #                               randseed, forceRand, printInfo)
+  res <- .callHarman(pc_data_scores, group, limit, numrepeats, randseed,
+                     forceRand, printInfo)
   
+    
   #####  Form S3 object  #####
   
   parameters <- list(limit=limit, numrepeats=numrepeats, randseed=randseed,
@@ -203,8 +204,7 @@ harman <- function(datamatrix, expt, batch, limit=0.95, numrepeats=100000L,
                       nrow=nrow(pc_data_scores),
                       ncol=ncol(pc_data_scores),
                       dimnames=dimnames(pc_data_scores))
-  #dimnames(corrected) <- dimnames(pc_data_scores)
-  
+
   results <- list(factors=factors,
                   parameters=parameters,
                   stats=stats,

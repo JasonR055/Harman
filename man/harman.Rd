@@ -5,7 +5,7 @@
 \title{Harman batch correction method}
 \usage{
 harman(datamatrix, expt, batch, limit = 0.95, numrepeats = 100000L,
-  randseed, forceRand = FALSE, printInfo = FALSE, strict = FALSE)
+  randseed, forceRand = FALSE, printInfo = FALSE)
 }
 \arguments{
 \item{datamatrix}{matrix or data.frame, the data values to correct with
@@ -36,8 +36,6 @@ than full explicit calculation from all permutations).}
 
 \item{printInfo}{logical, whether to print information during computation or
 not.}
-
-\item{strict}{logical}
 }
 \value{
 A \code{\link{harmanresults}} S3 object.
@@ -47,7 +45,8 @@ Harman is a PCA and constrained optimisation based technique
 that maximises the removal of batch effects from datasets, with the
 constraint that the probability of overcorrection (i.e. removing genuine
 biological signal along with batch noise) is kept to a fraction which is set
-by the end-user (Oytam et al, 2016).
+by the end-user (Oytam et al, 2016;
+\url{http://dx.doi.org/10.1186/s12859-016-1212-5}).
 
 Harman expects unbounded data, so for example, with HumanMethylation450
 arrays do not use the Beta statistic (with values constrained between 0 and
@@ -62,11 +61,11 @@ in columns, much like the `assayData` slot in the canonical Bioconductor
 \code{eSet} object, or any object which inherits from it. The data should
 have normalisation and any other global adjustment for noise reduction
 (such as background correction) applied prior to using Harman.
-The number of simulations, \code{numrepeats} parameter, should probably
-should be at least 100,000. The underlying principle of Harman rests upon
-PCA, which is a parametric technique. This implies Harman should be optimal
-when the data is normally distributed. However, PCA is known to be rather
-robust to very non-normal data.
+For converge, the number of simulations, \code{numrepeats} parameter should
+probably should be at least 100,000. The underlying principle of Harman rests
+upon PCA, which is a parametric technique. This implies Harman should be
+optimal when the data is normally distributed. However, PCA is known to be
+rather robust to very non-normal data.
 }
 \examples{
 library(HarmanData)
@@ -74,6 +73,7 @@ data(OLF)
 expt <- olf.info$Treatment
 batch <- olf.info$Batch
 olf.harman <- harman(olf.data, expt, batch)
+plot(olf.harman)
 olf.data.corrected <- reconstructData(olf.harman)
 
 ## Reading from a csv file
@@ -86,7 +86,8 @@ res <- harman(datamatrix, expt=batches$Treatment, batch=batches$Batch)
 arrowPlot(res, 1, 3)
 }
 \references{
-Oytam, et al. (2016).
+Oytam et al (2016) BMC Bioinformatics 17:1.
+DOI: 10.1186/s12859-016-1212-5
 }
 \seealso{
 \code{\link{harman}}, \code{\link{reconstructData}},

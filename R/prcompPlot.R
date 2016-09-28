@@ -4,6 +4,7 @@
 #' @param     object data.frame, matrix or \code{prcomp} object.
 #' @param     pc_x integer, principle component for the plot x dimension.
 #' @param     pc_y integer, principle component for the plot y dimension.
+#' @param     scale logical, whether to scale to unit variance before PCA.
 #' @param     colFactor factor or vector, colour the points by this factor,
 #' default is \code{NULL}. 
 #' @param     pchFactor factor or vector, point-type by this factor,
@@ -17,7 +18,7 @@
 #' Matrices must be of type \code{double} or \code{integer}. The
 #' \code{prcompPlot} function will then perform a principle component analysis
 #' on the data prior to plotting. The function is call
-#' is \code{prcomp(t(object), retx=TRUE, center=TRUE, scale.=TRUE)}.
+#' is \code{prcomp(t(object), retx=TRUE, center=TRUE, scale.=scale)}.
 #' Instead of specifying a data.frame or matrix, a pre-made \code{prcomp} object
 #' can be given to \code{prcompPlot}. In this case, care should be taken in
 #' setting the appropriate value of \code{scale.}. If a vector is given to
@@ -27,6 +28,8 @@
 #' For the default \code{NULL} values of \code{colFactor} and \code{pchFactor},
 #' all colours will be black and circles the point type, respectively.
 #' @seealso \code{\link{prcomp}} \code{\link{rainbow}}
+#' @importFrom graphics legend plot
+#' @importFrom stats prcomp
 #' @export
 #' @examples
 #' library(HarmanData)
@@ -38,15 +41,15 @@
 #' prcompPlot(pca, 1, 3, colFactor=batch, pchFactor=expt, palette='topo.colors',
 #' main='IMR90 PCA plot of Dim 1 and 3')
 
-prcompPlot <- function(object, pc_x=1, pc_y=2, colFactor=NULL, pchFactor=NULL,
-                       palette="rainbow", legend=TRUE, ...) {
+prcompPlot <- function(object, pc_x=1, pc_y=2, scale=FALSE, colFactor=NULL,
+                       pchFactor=NULL, palette="rainbow", legend=TRUE, ...) {
 
   # Sanity check object
   if(class(object) == "data.frame") {
     object <- as.matrix(object)
   }
   if(class(object) == "matrix" & typeof(object) %in% c('double', 'integer')) {
-    object <- prcomp(t(object), retx=TRUE, center=TRUE, scale.=TRUE)
+    object <- stats::prcomp(t(object), retx=TRUE, center=TRUE, scale.=scale)
   }
   if(class(object) != "prcomp") {
     stop("Require an instance of 'prcomp', a matrix of type 'double' or
@@ -83,19 +86,20 @@ prcompPlot <- function(object, pc_x=1, pc_y=2, colFactor=NULL, pchFactor=NULL,
   mypalette <- match.fun(palette)(num_levels)
   mycols <- mypalette[colFactor]
   
-  plot(object$x[, pc_x], object$x[, pc_y],
-       xlab=paste('PC', pc_x, sep=''),
-       ylab=paste('PC', pc_y, sep=''),
-       col=mycols,
-       pch=mypchs,
-       ...)
+  graphics::plot(object$x[, pc_x], object$x[, pc_y],
+                 xlab=paste('PC', pc_x, sep=''),
+                 ylab=paste('PC', pc_y, sep=''),
+                 col=mycols,
+                 pch=mypchs,
+                 ...)
   
   if(legend == TRUE) {
-    legend(x=min(object$x[, pc_x]), y=max(object$x[, pc_y]),
-           legend=factor_names,
-           fill=mypalette,
-           cex=0.7,
-           bg="transparent")
-  }
+    #legend(x=min(object$x[, pc_x]), y=max(object$x[, pc_y]),
+    graphics::legend(x="topleft",
+                     legend=factor_names,
+                     fill=mypalette,
+                     cex=0.7,
+                     bg="transparent")
+    }
 }
 

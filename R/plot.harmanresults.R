@@ -11,6 +11,7 @@
 #' batch <- olf.info$Batch
 #' olf.harman <- harman(olf.data, expt, batch)
 #' plot(olf.harman)
+#' @importFrom graphics par
 #' @export
 plot.harmanresults <- function(x, ...) {
   # set xlim and ylim  to be the same
@@ -36,11 +37,11 @@ plot.harmanresults <- function(x, ...) {
   
   xrange <- range(c(x$original[, this_pc_x], x$corrected[, this_pc_x]))
   yrange <- range(c(x$original[, this_pc_y], x$corrected[, this_pc_y]))
-  old_mfrow <- par()$mfrow
-  par(mfrow=c(1, 2))
+  old_mfrow <- graphics::par()$mfrow
+  graphics::par(mfrow=c(1, 2))
   pcaPlot(x, this='original', main='Original', xlim=xrange, ylim=yrange,
           legend=TRUE, ...)
   pcaPlot(x, this='corrected', main='Corrected', xlim=xrange, ylim=yrange,
           legend=FALSE, ...)
-  par(mfrow=old_mfrow)
+  graphics::par(mfrow=old_mfrow)
 }

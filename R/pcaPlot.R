@@ -34,6 +34,7 @@
 #' pcaPlot(olf.harman)
 #' pcaPlot(olf.harman, colBy='expt')
 #' pcaPlot(olf.harman, pc_x=2, pc_y=3, this='original', pch=17)
+#' @importFrom graphics legend plot
 #' @export
 pcaPlot <- function(harmanresults, pc_x=1, pc_y=2, this='corrected',
                     colBy='batch', pchBy='expt', palette="rainbow",
@@ -71,18 +72,21 @@ pcaPlot <- function(harmanresults, pc_x=1, pc_y=2, this='corrected',
     pch <- level_vector[harmanresults$factors[[pchBy]]]
   }
   
-  plot(x=scores[, pc_x],
-       y=scores[, pc_y],
-       col=col,
-       pch=pch,
-       xlab=colnames(scores)[pc_x],
-       ylab=colnames(scores)[pc_y],
-       ...)
+  graphics::plot(x=scores[, pc_x],
+                 y=scores[, pc_y],
+                 col=col,
+                 pch=pch,
+                 xlab=colnames(scores)[pc_x],
+                 ylab=colnames(scores)[pc_y],
+                 ...)
   
   if(draw_legend == TRUE) {
-    legend(x=min(scores[, pc_x]), y=max(scores[, pc_y]),
-           legend=levels(harmanresults$factors[, colBy]),
-           fill=palette, cex=0.7,
-           bg="transparent")
-  }
+    legend_text <- levels(harmanresults$factors[, colBy])
+    num_legend_text <- length(legend_text)
+    #legend(x=min(scores[, pc_x]), y=max(scores[, pc_y]),
+    graphics::legend(x="topleft",
+                     legend=legend_text,
+                     fill=palette, cex=round((1 / num_legend_text)^0.25, 2),
+                     bg="transparent")
+    }
 }
